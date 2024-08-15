@@ -1498,425 +1498,159 @@
     }
   });
 
-  // packages/shared/render/plugins/BaseSiteModules/webflow-links.js
-  var require_webflow_links = __commonJS({
-    "packages/shared/render/plugins/BaseSiteModules/webflow-links.js"(exports, module2) {
+  // packages/shared/render/plugins/BaseSiteModules/webflow-ix-events.js
+  var require_webflow_ix_events = __commonJS({
+    "packages/shared/render/plugins/BaseSiteModules/webflow-ix-events.js"(exports, module2) {
       "use strict";
-      var Webflow = require_webflow_lib();
-      Webflow.define("links", module2.exports = function($2, _) {
-        var api = {};
-        var $win = $2(window);
-        var designer;
-        var inApp = Webflow.env();
-        var location = window.location;
-        var tempLink = document.createElement("a");
-        var linkCurrent = "w--current";
-        var indexPage = /index\.(html|php)$/;
-        var dirList = /\/$/;
-        var anchors;
-        var slug;
-        api.ready = api.design = api.preview = init2;
-        function init2() {
-          designer = inApp && Webflow.env("design");
-          slug = Webflow.env("slug") || location.pathname || "";
-          Webflow.scroll.off(scroll);
-          anchors = [];
-          var links = document.links;
-          for (var i = 0; i < links.length; ++i) {
-            select(links[i]);
-          }
-          if (anchors.length) {
-            Webflow.scroll.on(scroll);
-            scroll();
-          }
-        }
-        function select(link) {
-          if (link.getAttribute("hreflang")) {
+      var $2 = window.jQuery;
+      var api = {};
+      var eventQueue = [];
+      var namespace = ".w-ix";
+      var eventTriggers = {
+        reset: function(i, el) {
+          el.__wf_intro = null;
+        },
+        intro: function(i, el) {
+          if (el.__wf_intro) {
             return;
           }
-          var href = designer && link.getAttribute("href-disabled") || link.getAttribute("href");
-          tempLink.href = href;
-          if (href.indexOf(":") >= 0) {
+          el.__wf_intro = true;
+          $2(el).triggerHandler(api.types.INTRO);
+        },
+        outro: function(i, el) {
+          if (!el.__wf_intro) {
             return;
           }
-          var $link = $2(link);
-          if (tempLink.hash.length > 1 && tempLink.host + tempLink.pathname === location.host + location.pathname) {
-            if (!/^#[a-zA-Z0-9\-\_]+$/.test(tempLink.hash)) {
-              return;
-            }
-            var $section = $2(tempLink.hash);
-            $section.length && anchors.push({
-              link: $link,
-              sec: $section,
-              active: false
-            });
-            return;
-          }
-          if (href === "#" || href === "") {
-            return;
-          }
-          var match = tempLink.href === location.href || href === slug || indexPage.test(href) && dirList.test(slug);
-          setClass($link, linkCurrent, match);
+          el.__wf_intro = null;
+          $2(el).triggerHandler(api.types.OUTRO);
         }
-        function scroll() {
-          var viewTop = $win.scrollTop();
-          var viewHeight = $win.height();
-          _.each(anchors, function(anchor) {
-            if (anchor.link.attr("hreflang")) {
-              return;
-            }
-            var $link = anchor.link;
-            var $section = anchor.sec;
-            var top = $section.offset().top;
-            var height = $section.outerHeight();
-            var offset = viewHeight * 0.5;
-            var active = $section.is(":visible") && top + height - offset >= viewTop && top + offset <= viewTop + viewHeight;
-            if (anchor.active === active) {
-              return;
-            }
-            anchor.active = active;
-            setClass($link, linkCurrent, active);
-          });
+      };
+      api.triggers = {};
+      api.types = {
+        INTRO: "w-ix-intro" + namespace,
+        OUTRO: "w-ix-outro" + namespace
+      };
+      api.init = function() {
+        var count = eventQueue.length;
+        for (var i = 0; i < count; i++) {
+          var memo = eventQueue[i];
+          memo[0](0, memo[1]);
         }
-        function setClass($elem, className, add) {
-          var exists = $elem.hasClass(className);
-          if (add && exists) {
-            return;
+        eventQueue = [];
+        $2.extend(api.triggers, eventTriggers);
+      };
+      api.async = function() {
+        for (var key in eventTriggers) {
+          var func = eventTriggers[key];
+          if (!eventTriggers.hasOwnProperty(key)) {
+            continue;
           }
-          if (!add && !exists) {
-            return;
-          }
-          add ? $elem.addClass(className) : $elem.removeClass(className);
-        }
-        return api;
-      });
-    }
-  });
-
-  // packages/shared/render/plugins/BaseSiteModules/webflow-scroll.js
-  var require_webflow_scroll = __commonJS({
-    "packages/shared/render/plugins/BaseSiteModules/webflow-scroll.js"(exports, module2) {
-      "use strict";
-      var Webflow = require_webflow_lib();
-      Webflow.define("scroll", module2.exports = function($2) {
-        var NS_EVENTS = {
-          WF_CLICK_EMPTY: "click.wf-empty-link",
-          WF_CLICK_SCROLL: "click.wf-scroll"
-        };
-        var loc = window.location;
-        var history = inIframe() ? null : window.history;
-        var $win = $2(window);
-        var $doc = $2(document);
-        var $body = $2(document.body);
-        var animate = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || function(fn) {
-          window.setTimeout(fn, 15);
-        };
-        var rootTag = Webflow.env("editor") ? ".w-editor-body" : "body";
-        var headerSelector = "header, " + rootTag + " > .header, " + rootTag + " > .w-nav:not([data-no-scroll])";
-        var emptyHrefSelector = 'a[href="#"]';
-        var localHrefSelector = 'a[href*="#"]:not(.w-tab-link):not(' + emptyHrefSelector + ")";
-        var scrollTargetOutlineCSS = '.wf-force-outline-none[tabindex="-1"]:focus{outline:none;}';
-        var focusStylesEl = document.createElement("style");
-        focusStylesEl.appendChild(document.createTextNode(scrollTargetOutlineCSS));
-        function inIframe() {
-          try {
-            return Boolean(window.frameElement);
-          } catch (e) {
-            return true;
-          }
-        }
-        var validHash = /^#[a-zA-Z0-9][\w:.-]*$/;
-        function linksToCurrentPage(link) {
-          return validHash.test(link.hash) && link.host + link.pathname === loc.host + loc.pathname;
-        }
-        const reducedMotionMediaQuery = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)");
-        function reducedMotionEnabled() {
-          return document.body.getAttribute("data-wf-scroll-motion") === "none" || reducedMotionMediaQuery.matches;
-        }
-        function setFocusable($el, action) {
-          var initialTabindex;
-          switch (action) {
-            case "add":
-              initialTabindex = $el.attr("tabindex");
-              if (initialTabindex) {
-                $el.attr("data-wf-tabindex-swap", initialTabindex);
-              } else {
-                $el.attr("tabindex", "-1");
-              }
-              break;
-            case "remove":
-              initialTabindex = $el.attr("data-wf-tabindex-swap");
-              if (initialTabindex) {
-                $el.attr("tabindex", initialTabindex);
-                $el.removeAttr("data-wf-tabindex-swap");
-              } else {
-                $el.removeAttr("tabindex");
-              }
-              break;
-          }
-          $el.toggleClass("wf-force-outline-none", action === "add");
-        }
-        function validateScroll(evt) {
-          var target = evt.currentTarget;
-          if (
-            // Bail if in Designer
-            Webflow.env("design") || // Ignore links being used by jQuery mobile
-            window.$.mobile && /(?:^|\s)ui-link(?:$|\s)/.test(target.className)
-          ) {
-            return;
-          }
-          var hash = linksToCurrentPage(target) ? target.hash : "";
-          if (hash === "")
-            return;
-          var $el = $2(hash);
-          if (!$el.length) {
-            return;
-          }
-          if (evt) {
-            evt.preventDefault();
-            evt.stopPropagation();
-          }
-          updateHistory(hash, evt);
-          window.setTimeout(function() {
-            scroll($el, function setFocus() {
-              setFocusable($el, "add");
-              $el.get(0).focus({
-                preventScroll: true
-              });
-              setFocusable($el, "remove");
-            });
-          }, evt ? 0 : 300);
-        }
-        function updateHistory(hash) {
-          if (loc.hash !== hash && history && history.pushState && // Navigation breaks Chrome when the protocol is `file:`.
-          !(Webflow.env.chrome && loc.protocol === "file:")) {
-            var oldHash = history.state && history.state.hash;
-            if (oldHash !== hash) {
-              history.pushState({
-                hash
-              }, "", hash);
-            }
-          }
-        }
-        function scroll($targetEl, cb) {
-          var start = $win.scrollTop();
-          var end = calculateScrollEndPosition($targetEl);
-          if (start === end)
-            return;
-          var duration = calculateScrollDuration($targetEl, start, end);
-          var clock = Date.now();
-          var step = function() {
-            var elapsed = Date.now() - clock;
-            window.scroll(0, getY(start, end, elapsed, duration));
-            if (elapsed <= duration) {
-              animate(step);
-            } else if (typeof cb === "function") {
-              cb();
-            }
+          api.triggers[key] = function(i, el) {
+            eventQueue.push([func, el]);
           };
-          animate(step);
         }
-        function calculateScrollEndPosition($targetEl) {
-          var $header = $2(headerSelector);
-          var offsetY = $header.css("position") === "fixed" ? $header.outerHeight() : 0;
-          var end = $targetEl.offset().top - offsetY;
-          if ($targetEl.data("scroll") === "mid") {
-            var available = $win.height() - offsetY;
-            var elHeight = $targetEl.outerHeight();
-            if (elHeight < available) {
-              end -= Math.round((available - elHeight) / 2);
-            }
-          }
-          return end;
-        }
-        function calculateScrollDuration($targetEl, start, end) {
-          if (reducedMotionEnabled())
-            return 0;
-          var mult = 1;
-          $body.add($targetEl).each(function(_, el) {
-            var time = parseFloat(el.getAttribute("data-scroll-time"));
-            if (!isNaN(time) && time >= 0) {
-              mult = time;
-            }
-          });
-          return (472.143 * Math.log(Math.abs(start - end) + 125) - 2e3) * mult;
-        }
-        function getY(start, end, elapsed, duration) {
-          if (elapsed > duration) {
-            return end;
-          }
-          return start + (end - start) * ease(elapsed / duration);
-        }
-        function ease(t) {
-          return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
-        }
-        function ready() {
-          var {
-            WF_CLICK_EMPTY,
-            WF_CLICK_SCROLL
-          } = NS_EVENTS;
-          $doc.on(WF_CLICK_SCROLL, localHrefSelector, validateScroll);
-          $doc.on(WF_CLICK_EMPTY, emptyHrefSelector, function(e) {
-            e.preventDefault();
-          });
-          document.head.insertBefore(focusStylesEl, document.head.firstChild);
-        }
-        return {
-          ready
-        };
-      });
+      };
+      api.async();
+      module2.exports = api;
     }
   });
 
-  // packages/shared/render/plugins/BaseSiteModules/webflow-touch.js
-  var require_webflow_touch = __commonJS({
-    "packages/shared/render/plugins/BaseSiteModules/webflow-touch.js"(exports, module2) {
+  // packages/shared/render/plugins/BaseSiteModules/webflow-ix2-events.js
+  var require_webflow_ix2_events = __commonJS({
+    "packages/shared/render/plugins/BaseSiteModules/webflow-ix2-events.js"(exports, module2) {
       "use strict";
-      var Webflow = require_webflow_lib();
-      Webflow.define("touch", module2.exports = function($2) {
-        var api = {};
-        var getSelection = window.getSelection;
-        $2.event.special.tap = {
-          bindType: "click",
-          delegateType: "click"
-        };
-        api.init = function(el) {
-          el = typeof el === "string" ? $2(el).get(0) : el;
-          return el ? new Touch(el) : null;
-        };
-        function Touch(el) {
-          var active = false;
-          var useTouch = false;
-          var thresholdX = Math.min(Math.round(window.innerWidth * 0.04), 40);
-          var startX;
-          var lastX;
-          el.addEventListener("touchstart", start, false);
-          el.addEventListener("touchmove", move, false);
-          el.addEventListener("touchend", end, false);
-          el.addEventListener("touchcancel", cancel, false);
-          el.addEventListener("mousedown", start, false);
-          el.addEventListener("mousemove", move, false);
-          el.addEventListener("mouseup", end, false);
-          el.addEventListener("mouseout", cancel, false);
-          function start(evt) {
-            var touches = evt.touches;
-            if (touches && touches.length > 1) {
-              return;
-            }
-            active = true;
-            if (touches) {
-              useTouch = true;
-              startX = touches[0].clientX;
-            } else {
-              startX = evt.clientX;
-            }
-            lastX = startX;
-          }
-          function move(evt) {
-            if (!active) {
-              return;
-            }
-            if (useTouch && evt.type === "mousemove") {
-              evt.preventDefault();
-              evt.stopPropagation();
-              return;
-            }
-            var touches = evt.touches;
-            var x = touches ? touches[0].clientX : evt.clientX;
-            var velocityX = x - lastX;
-            lastX = x;
-            if (Math.abs(velocityX) > thresholdX && getSelection && String(getSelection()) === "") {
-              triggerEvent("swipe", evt, {
-                direction: velocityX > 0 ? "right" : "left"
-              });
-              cancel();
-            }
-          }
-          function end(evt) {
-            if (!active) {
-              return;
-            }
-            active = false;
-            if (useTouch && evt.type === "mouseup") {
-              evt.preventDefault();
-              evt.stopPropagation();
-              useTouch = false;
-              return;
-            }
-          }
-          function cancel() {
-            active = false;
-          }
-          function destroy2() {
-            el.removeEventListener("touchstart", start, false);
-            el.removeEventListener("touchmove", move, false);
-            el.removeEventListener("touchend", end, false);
-            el.removeEventListener("touchcancel", cancel, false);
-            el.removeEventListener("mousedown", start, false);
-            el.removeEventListener("mousemove", move, false);
-            el.removeEventListener("mouseup", end, false);
-            el.removeEventListener("mouseout", cancel, false);
-            el = null;
-          }
-          this.destroy = destroy2;
+      var IXEvents = require_webflow_ix_events();
+      function dispatchCustomEvent2(element, eventName) {
+        var event = document.createEvent("CustomEvent");
+        event.initCustomEvent(eventName, true, true, null);
+        element.dispatchEvent(event);
+      }
+      var $2 = window.jQuery;
+      var api = {};
+      var namespace = ".w-ix";
+      var eventTriggers = {
+        reset: function(i, el) {
+          IXEvents.triggers.reset(i, el);
+        },
+        intro: function(i, el) {
+          IXEvents.triggers.intro(i, el);
+          dispatchCustomEvent2(el, "COMPONENT_ACTIVE");
+        },
+        outro: function(i, el) {
+          IXEvents.triggers.outro(i, el);
+          dispatchCustomEvent2(el, "COMPONENT_INACTIVE");
         }
-        function triggerEvent(type, evt, data) {
-          var newEvent = $2.Event(type, {
-            originalEvent: evt
-          });
-          $2(evt.target).trigger(newEvent, data);
-        }
-        api.instance = api.init(document);
-        return api;
-      });
+      };
+      api.triggers = {};
+      api.types = {
+        INTRO: "w-ix-intro" + namespace,
+        OUTRO: "w-ix-outro" + namespace
+      };
+      $2.extend(api.triggers, eventTriggers);
+      module2.exports = api;
     }
   });
 
-  // node_modules/custom-event-polyfill/polyfill.js
-  var init_polyfill = __esm({
-    "node_modules/custom-event-polyfill/polyfill.js"() {
-      (function() {
-        if (typeof window === "undefined") {
-          return;
-        }
-        try {
-          var ce = new window.CustomEvent("test", { cancelable: true });
-          ce.preventDefault();
-          if (ce.defaultPrevented !== true) {
-            throw new Error("Could not prevent default");
-          }
-        } catch (e) {
-          var CustomEvent2 = function(event, params) {
-            var evt, origPrevent;
-            params = params || {};
-            params.bubbles = !!params.bubbles;
-            params.cancelable = !!params.cancelable;
-            evt = document.createEvent("CustomEvent");
-            evt.initCustomEvent(
-              event,
-              params.bubbles,
-              params.cancelable,
-              params.detail
-            );
-            origPrevent = evt.preventDefault;
-            evt.preventDefault = function() {
-              origPrevent.call(this);
-              try {
-                Object.defineProperty(this, "defaultPrevented", {
-                  get: function() {
-                    return true;
-                  }
-                });
-              } catch (e2) {
-                this.defaultPrevented = true;
-              }
-            };
-            return evt;
+  // node_modules/@babel/runtime/helpers/typeof.js
+  var require_typeof = __commonJS({
+    "node_modules/@babel/runtime/helpers/typeof.js"(exports, module2) {
+      function _typeof(o) {
+        "@babel/helpers - typeof";
+        return module2.exports = _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function(o2) {
+          return typeof o2;
+        } : function(o2) {
+          return o2 && "function" == typeof Symbol && o2.constructor === Symbol && o2 !== Symbol.prototype ? "symbol" : typeof o2;
+        }, module2.exports.__esModule = true, module2.exports["default"] = module2.exports, _typeof(o);
+      }
+      module2.exports = _typeof, module2.exports.__esModule = true, module2.exports["default"] = module2.exports;
+    }
+  });
+
+  // node_modules/@babel/runtime/helpers/interopRequireWildcard.js
+  var require_interopRequireWildcard = __commonJS({
+    "node_modules/@babel/runtime/helpers/interopRequireWildcard.js"(exports, module2) {
+      var _typeof = require_typeof()["default"];
+      function _getRequireWildcardCache(e) {
+        if ("function" != typeof WeakMap)
+          return null;
+        var r = /* @__PURE__ */ new WeakMap(), t = /* @__PURE__ */ new WeakMap();
+        return (_getRequireWildcardCache = function _getRequireWildcardCache2(e2) {
+          return e2 ? t : r;
+        })(e);
+      }
+      function _interopRequireWildcard(e, r) {
+        if (!r && e && e.__esModule)
+          return e;
+        if (null === e || "object" != _typeof(e) && "function" != typeof e)
+          return {
+            "default": e
           };
-          CustomEvent2.prototype = window.Event.prototype;
-          window.CustomEvent = CustomEvent2;
-        }
-      })();
+        var t = _getRequireWildcardCache(r);
+        if (t && t.has(e))
+          return t.get(e);
+        var n = {
+          __proto__: null
+        }, a = Object.defineProperty && Object.getOwnPropertyDescriptor;
+        for (var u in e)
+          if ("default" !== u && {}.hasOwnProperty.call(e, u)) {
+            var i = a ? Object.getOwnPropertyDescriptor(e, u) : null;
+            i && (i.get || i.set) ? Object.defineProperty(n, u, i) : n[u] = e[u];
+          }
+        return n["default"] = e, t && t.set(e, n), n;
+      }
+      module2.exports = _interopRequireWildcard, module2.exports.__esModule = true, module2.exports["default"] = module2.exports;
+    }
+  });
+
+  // node_modules/@babel/runtime/helpers/interopRequireDefault.js
+  var require_interopRequireDefault = __commonJS({
+    "node_modules/@babel/runtime/helpers/interopRequireDefault.js"(exports, module2) {
+      function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+          "default": obj
+        };
+      }
+      module2.exports = _interopRequireDefault, module2.exports.__esModule = true, module2.exports["default"] = module2.exports;
     }
   });
 
@@ -2578,16 +2312,16 @@
       var OBJECT_ALREADY_INITIALIZED = "Object already initialized";
       var TypeError2 = global2.TypeError;
       var WeakMap2 = global2.WeakMap;
-      var set;
-      var get6;
+      var set3;
+      var get8;
       var has;
       var enforce = function(it) {
-        return has(it) ? get6(it) : set(it, {});
+        return has(it) ? get8(it) : set3(it, {});
       };
       var getterFor = function(TYPE2) {
         return function(it) {
           var state;
-          if (!isObject2(it) || (state = get6(it)).type !== TYPE2) {
+          if (!isObject2(it) || (state = get8(it)).type !== TYPE2) {
             throw TypeError2("Incompatible receiver, " + TYPE2 + " required");
           }
           return state;
@@ -2598,14 +2332,14 @@
         wmget = uncurryThis(store.get);
         wmhas = uncurryThis(store.has);
         wmset = uncurryThis(store.set);
-        set = function(it, metadata) {
+        set3 = function(it, metadata) {
           if (wmhas(store, it))
             throw new TypeError2(OBJECT_ALREADY_INITIALIZED);
           metadata.facade = it;
           wmset(store, it, metadata);
           return metadata;
         };
-        get6 = function(it) {
+        get8 = function(it) {
           return wmget(store, it) || {};
         };
         has = function(it) {
@@ -2614,14 +2348,14 @@
       } else {
         STATE = sharedKey("state");
         hiddenKeys[STATE] = true;
-        set = function(it, metadata) {
+        set3 = function(it, metadata) {
           if (hasOwn2(it, STATE))
             throw new TypeError2(OBJECT_ALREADY_INITIALIZED);
           metadata.facade = it;
           createNonEnumerableProperty(it, STATE, metadata);
           return metadata;
         };
-        get6 = function(it) {
+        get8 = function(it) {
           return hasOwn2(it, STATE) ? it[STATE] : {};
         };
         has = function(it) {
@@ -2634,8 +2368,8 @@
       var wmset;
       var STATE;
       module2.exports = {
-        set,
-        get: get6,
+        set: set3,
+        get: get8,
         has,
         enforce,
         getterFor
@@ -2959,6 +2693,9812 @@
     }
   });
 
+  // node_modules/core-js/internals/object-keys.js
+  var require_object_keys = __commonJS({
+    "node_modules/core-js/internals/object-keys.js"(exports, module2) {
+      var internalObjectKeys = require_object_keys_internal();
+      var enumBugKeys = require_enum_bug_keys();
+      module2.exports = Object.keys || function keys(O) {
+        return internalObjectKeys(O, enumBugKeys);
+      };
+    }
+  });
+
+  // node_modules/core-js/internals/object-define-properties.js
+  var require_object_define_properties = __commonJS({
+    "node_modules/core-js/internals/object-define-properties.js"(exports, module2) {
+      var DESCRIPTORS = require_descriptors();
+      var definePropertyModule = require_object_define_property();
+      var anObject = require_an_object();
+      var toIndexedObject = require_to_indexed_object();
+      var objectKeys = require_object_keys();
+      module2.exports = DESCRIPTORS ? Object.defineProperties : function defineProperties(O, Properties) {
+        anObject(O);
+        var props = toIndexedObject(Properties);
+        var keys = objectKeys(Properties);
+        var length = keys.length;
+        var index = 0;
+        var key;
+        while (length > index)
+          definePropertyModule.f(O, key = keys[index++], props[key]);
+        return O;
+      };
+    }
+  });
+
+  // node_modules/core-js/internals/html.js
+  var require_html = __commonJS({
+    "node_modules/core-js/internals/html.js"(exports, module2) {
+      var getBuiltIn = require_get_built_in();
+      module2.exports = getBuiltIn("document", "documentElement");
+    }
+  });
+
+  // node_modules/core-js/internals/object-create.js
+  var require_object_create = __commonJS({
+    "node_modules/core-js/internals/object-create.js"(exports, module2) {
+      var anObject = require_an_object();
+      var defineProperties = require_object_define_properties();
+      var enumBugKeys = require_enum_bug_keys();
+      var hiddenKeys = require_hidden_keys();
+      var html = require_html();
+      var documentCreateElement = require_document_create_element();
+      var sharedKey = require_shared_key();
+      var GT = ">";
+      var LT = "<";
+      var PROTOTYPE = "prototype";
+      var SCRIPT = "script";
+      var IE_PROTO = sharedKey("IE_PROTO");
+      var EmptyConstructor = function() {
+      };
+      var scriptTag = function(content) {
+        return LT + SCRIPT + GT + content + LT + "/" + SCRIPT + GT;
+      };
+      var NullProtoObjectViaActiveX = function(activeXDocument2) {
+        activeXDocument2.write(scriptTag(""));
+        activeXDocument2.close();
+        var temp = activeXDocument2.parentWindow.Object;
+        activeXDocument2 = null;
+        return temp;
+      };
+      var NullProtoObjectViaIFrame = function() {
+        var iframe = documentCreateElement("iframe");
+        var JS = "java" + SCRIPT + ":";
+        var iframeDocument;
+        iframe.style.display = "none";
+        html.appendChild(iframe);
+        iframe.src = String(JS);
+        iframeDocument = iframe.contentWindow.document;
+        iframeDocument.open();
+        iframeDocument.write(scriptTag("document.F=Object"));
+        iframeDocument.close();
+        return iframeDocument.F;
+      };
+      var activeXDocument;
+      var NullProtoObject = function() {
+        try {
+          activeXDocument = new ActiveXObject("htmlfile");
+        } catch (error) {
+        }
+        NullProtoObject = typeof document != "undefined" ? document.domain && activeXDocument ? NullProtoObjectViaActiveX(activeXDocument) : NullProtoObjectViaIFrame() : NullProtoObjectViaActiveX(activeXDocument);
+        var length = enumBugKeys.length;
+        while (length--)
+          delete NullProtoObject[PROTOTYPE][enumBugKeys[length]];
+        return NullProtoObject();
+      };
+      hiddenKeys[IE_PROTO] = true;
+      module2.exports = Object.create || function create5(O, Properties) {
+        var result2;
+        if (O !== null) {
+          EmptyConstructor[PROTOTYPE] = anObject(O);
+          result2 = new EmptyConstructor();
+          EmptyConstructor[PROTOTYPE] = null;
+          result2[IE_PROTO] = O;
+        } else
+          result2 = NullProtoObject();
+        return Properties === void 0 ? result2 : defineProperties(result2, Properties);
+      };
+    }
+  });
+
+  // node_modules/core-js/internals/add-to-unscopables.js
+  var require_add_to_unscopables = __commonJS({
+    "node_modules/core-js/internals/add-to-unscopables.js"(exports, module2) {
+      var wellKnownSymbol = require_well_known_symbol();
+      var create5 = require_object_create();
+      var definePropertyModule = require_object_define_property();
+      var UNSCOPABLES = wellKnownSymbol("unscopables");
+      var ArrayPrototype = Array.prototype;
+      if (ArrayPrototype[UNSCOPABLES] == void 0) {
+        definePropertyModule.f(ArrayPrototype, UNSCOPABLES, {
+          configurable: true,
+          value: create5(null)
+        });
+      }
+      module2.exports = function(key) {
+        ArrayPrototype[UNSCOPABLES][key] = true;
+      };
+    }
+  });
+
+  // node_modules/core-js/modules/es.array.includes.js
+  var require_es_array_includes = __commonJS({
+    "node_modules/core-js/modules/es.array.includes.js"() {
+      "use strict";
+      var $2 = require_export();
+      var $includes = require_array_includes().includes;
+      var addToUnscopables = require_add_to_unscopables();
+      $2({ target: "Array", proto: true }, {
+        includes: function includes(el) {
+          return $includes(this, el, arguments.length > 1 ? arguments[1] : void 0);
+        }
+      });
+      addToUnscopables("includes");
+    }
+  });
+
+  // node_modules/core-js/internals/entry-unbind.js
+  var require_entry_unbind = __commonJS({
+    "node_modules/core-js/internals/entry-unbind.js"(exports, module2) {
+      var global2 = require_global();
+      var uncurryThis = require_function_uncurry_this();
+      module2.exports = function(CONSTRUCTOR, METHOD) {
+        return uncurryThis(global2[CONSTRUCTOR].prototype[METHOD]);
+      };
+    }
+  });
+
+  // node_modules/core-js/es/array/includes.js
+  var require_includes = __commonJS({
+    "node_modules/core-js/es/array/includes.js"(exports, module2) {
+      require_es_array_includes();
+      var entryUnbind = require_entry_unbind();
+      module2.exports = entryUnbind("Array", "includes");
+    }
+  });
+
+  // node_modules/core-js/stable/array/includes.js
+  var require_includes2 = __commonJS({
+    "node_modules/core-js/stable/array/includes.js"(exports, module2) {
+      var parent = require_includes();
+      module2.exports = parent;
+    }
+  });
+
+  // node_modules/core-js/features/array/includes.js
+  var require_includes3 = __commonJS({
+    "node_modules/core-js/features/array/includes.js"(exports, module2) {
+      var parent = require_includes2();
+      module2.exports = parent;
+    }
+  });
+
+  // node_modules/lodash/_freeGlobal.js
+  var require_freeGlobal = __commonJS({
+    "node_modules/lodash/_freeGlobal.js"(exports, module2) {
+      var freeGlobal = typeof global == "object" && global && global.Object === Object && global;
+      module2.exports = freeGlobal;
+    }
+  });
+
+  // node_modules/lodash/_root.js
+  var require_root = __commonJS({
+    "node_modules/lodash/_root.js"(exports, module2) {
+      var freeGlobal = require_freeGlobal();
+      var freeSelf = typeof self == "object" && self && self.Object === Object && self;
+      var root2 = freeGlobal || freeSelf || Function("return this")();
+      module2.exports = root2;
+    }
+  });
+
+  // node_modules/lodash/_Symbol.js
+  var require_Symbol = __commonJS({
+    "node_modules/lodash/_Symbol.js"(exports, module2) {
+      var root2 = require_root();
+      var Symbol2 = root2.Symbol;
+      module2.exports = Symbol2;
+    }
+  });
+
+  // node_modules/lodash/_getRawTag.js
+  var require_getRawTag = __commonJS({
+    "node_modules/lodash/_getRawTag.js"(exports, module2) {
+      var Symbol2 = require_Symbol();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      var nativeObjectToString = objectProto.toString;
+      var symToStringTag = Symbol2 ? Symbol2.toStringTag : void 0;
+      function getRawTag(value) {
+        var isOwn = hasOwnProperty9.call(value, symToStringTag), tag = value[symToStringTag];
+        try {
+          value[symToStringTag] = void 0;
+          var unmasked = true;
+        } catch (e) {
+        }
+        var result2 = nativeObjectToString.call(value);
+        if (unmasked) {
+          if (isOwn) {
+            value[symToStringTag] = tag;
+          } else {
+            delete value[symToStringTag];
+          }
+        }
+        return result2;
+      }
+      module2.exports = getRawTag;
+    }
+  });
+
+  // node_modules/lodash/_objectToString.js
+  var require_objectToString = __commonJS({
+    "node_modules/lodash/_objectToString.js"(exports, module2) {
+      var objectProto = Object.prototype;
+      var nativeObjectToString = objectProto.toString;
+      function objectToString(value) {
+        return nativeObjectToString.call(value);
+      }
+      module2.exports = objectToString;
+    }
+  });
+
+  // node_modules/lodash/_baseGetTag.js
+  var require_baseGetTag = __commonJS({
+    "node_modules/lodash/_baseGetTag.js"(exports, module2) {
+      var Symbol2 = require_Symbol();
+      var getRawTag = require_getRawTag();
+      var objectToString = require_objectToString();
+      var nullTag = "[object Null]";
+      var undefinedTag = "[object Undefined]";
+      var symToStringTag = Symbol2 ? Symbol2.toStringTag : void 0;
+      function baseGetTag(value) {
+        if (value == null) {
+          return value === void 0 ? undefinedTag : nullTag;
+        }
+        return symToStringTag && symToStringTag in Object(value) ? getRawTag(value) : objectToString(value);
+      }
+      module2.exports = baseGetTag;
+    }
+  });
+
+  // node_modules/lodash/_overArg.js
+  var require_overArg = __commonJS({
+    "node_modules/lodash/_overArg.js"(exports, module2) {
+      function overArg(func, transform2) {
+        return function(arg) {
+          return func(transform2(arg));
+        };
+      }
+      module2.exports = overArg;
+    }
+  });
+
+  // node_modules/lodash/_getPrototype.js
+  var require_getPrototype = __commonJS({
+    "node_modules/lodash/_getPrototype.js"(exports, module2) {
+      var overArg = require_overArg();
+      var getPrototype = overArg(Object.getPrototypeOf, Object);
+      module2.exports = getPrototype;
+    }
+  });
+
+  // node_modules/lodash/isObjectLike.js
+  var require_isObjectLike = __commonJS({
+    "node_modules/lodash/isObjectLike.js"(exports, module2) {
+      function isObjectLike2(value) {
+        return value != null && typeof value == "object";
+      }
+      module2.exports = isObjectLike2;
+    }
+  });
+
+  // node_modules/lodash/isPlainObject.js
+  var require_isPlainObject = __commonJS({
+    "node_modules/lodash/isPlainObject.js"(exports, module2) {
+      var baseGetTag = require_baseGetTag();
+      var getPrototype = require_getPrototype();
+      var isObjectLike2 = require_isObjectLike();
+      var objectTag = "[object Object]";
+      var funcProto = Function.prototype;
+      var objectProto = Object.prototype;
+      var funcToString = funcProto.toString;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      var objectCtorString = funcToString.call(Object);
+      function isPlainObject(value) {
+        if (!isObjectLike2(value) || baseGetTag(value) != objectTag) {
+          return false;
+        }
+        var proto = getPrototype(value);
+        if (proto === null) {
+          return true;
+        }
+        var Ctor = hasOwnProperty9.call(proto, "constructor") && proto.constructor;
+        return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
+      }
+      module2.exports = isPlainObject;
+    }
+  });
+
+  // node_modules/redux/node_modules/symbol-observable/lib/ponyfill.js
+  var require_ponyfill = __commonJS({
+    "node_modules/redux/node_modules/symbol-observable/lib/ponyfill.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports["default"] = symbolObservablePonyfill2;
+      function symbolObservablePonyfill2(root2) {
+        var result2;
+        var _Symbol = root2.Symbol;
+        if (typeof _Symbol === "function") {
+          if (_Symbol.observable) {
+            result2 = _Symbol.observable;
+          } else {
+            result2 = _Symbol("observable");
+            _Symbol.observable = result2;
+          }
+        } else {
+          result2 = "@@observable";
+        }
+        return result2;
+      }
+    }
+  });
+
+  // node_modules/redux/node_modules/symbol-observable/lib/index.js
+  var require_lib = __commonJS({
+    "node_modules/redux/node_modules/symbol-observable/lib/index.js"(exports, module2) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      var _ponyfill = require_ponyfill();
+      var _ponyfill2 = _interopRequireDefault(_ponyfill);
+      function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : { "default": obj };
+      }
+      var root2;
+      if (typeof self !== "undefined") {
+        root2 = self;
+      } else if (typeof window !== "undefined") {
+        root2 = window;
+      } else if (typeof global !== "undefined") {
+        root2 = global;
+      } else if (typeof module2 !== "undefined") {
+        root2 = module2;
+      } else {
+        root2 = Function("return this")();
+      }
+      var result2 = (0, _ponyfill2["default"])(root2);
+      exports["default"] = result2;
+    }
+  });
+
+  // node_modules/redux/lib/createStore.js
+  var require_createStore = __commonJS({
+    "node_modules/redux/lib/createStore.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      exports.ActionTypes = void 0;
+      exports["default"] = createStore;
+      var _isPlainObject = require_isPlainObject();
+      var _isPlainObject2 = _interopRequireDefault(_isPlainObject);
+      var _symbolObservable = require_lib();
+      var _symbolObservable2 = _interopRequireDefault(_symbolObservable);
+      function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : { "default": obj };
+      }
+      var ActionTypes = exports.ActionTypes = {
+        INIT: "@@redux/INIT"
+      };
+      function createStore(reducer, preloadedState, enhancer) {
+        var _ref2;
+        if (typeof preloadedState === "function" && typeof enhancer === "undefined") {
+          enhancer = preloadedState;
+          preloadedState = void 0;
+        }
+        if (typeof enhancer !== "undefined") {
+          if (typeof enhancer !== "function") {
+            throw new Error("Expected the enhancer to be a function.");
+          }
+          return enhancer(createStore)(reducer, preloadedState);
+        }
+        if (typeof reducer !== "function") {
+          throw new Error("Expected the reducer to be a function.");
+        }
+        var currentReducer = reducer;
+        var currentState = preloadedState;
+        var currentListeners = [];
+        var nextListeners = currentListeners;
+        var isDispatching = false;
+        function ensureCanMutateNextListeners() {
+          if (nextListeners === currentListeners) {
+            nextListeners = currentListeners.slice();
+          }
+        }
+        function getState() {
+          return currentState;
+        }
+        function subscribe(listener) {
+          if (typeof listener !== "function") {
+            throw new Error("Expected listener to be a function.");
+          }
+          var isSubscribed = true;
+          ensureCanMutateNextListeners();
+          nextListeners.push(listener);
+          return function unsubscribe() {
+            if (!isSubscribed) {
+              return;
+            }
+            isSubscribed = false;
+            ensureCanMutateNextListeners();
+            var index = nextListeners.indexOf(listener);
+            nextListeners.splice(index, 1);
+          };
+        }
+        function dispatch(action) {
+          if (!(0, _isPlainObject2["default"])(action)) {
+            throw new Error("Actions must be plain objects. Use custom middleware for async actions.");
+          }
+          if (typeof action.type === "undefined") {
+            throw new Error('Actions may not have an undefined "type" property. Have you misspelled a constant?');
+          }
+          if (isDispatching) {
+            throw new Error("Reducers may not dispatch actions.");
+          }
+          try {
+            isDispatching = true;
+            currentState = currentReducer(currentState, action);
+          } finally {
+            isDispatching = false;
+          }
+          var listeners = currentListeners = nextListeners;
+          for (var i = 0; i < listeners.length; i++) {
+            listeners[i]();
+          }
+          return action;
+        }
+        function replaceReducer(nextReducer) {
+          if (typeof nextReducer !== "function") {
+            throw new Error("Expected the nextReducer to be a function.");
+          }
+          currentReducer = nextReducer;
+          dispatch({ type: ActionTypes.INIT });
+        }
+        function observable() {
+          var _ref;
+          var outerSubscribe = subscribe;
+          return _ref = {
+            /**
+             * The minimal observable subscription method.
+             * @param {Object} observer Any object that can be used as an observer.
+             * The observer object should have a `next` method.
+             * @returns {subscription} An object with an `unsubscribe` method that can
+             * be used to unsubscribe the observable from the store, and prevent further
+             * emission of values from the observable.
+             */
+            subscribe: function subscribe2(observer) {
+              if (typeof observer !== "object") {
+                throw new TypeError("Expected the observer to be an object.");
+              }
+              function observeState() {
+                if (observer.next) {
+                  observer.next(getState());
+                }
+              }
+              observeState();
+              var unsubscribe = outerSubscribe(observeState);
+              return { unsubscribe };
+            }
+          }, _ref[_symbolObservable2["default"]] = function() {
+            return this;
+          }, _ref;
+        }
+        dispatch({ type: ActionTypes.INIT });
+        return _ref2 = {
+          dispatch,
+          subscribe,
+          getState,
+          replaceReducer
+        }, _ref2[_symbolObservable2["default"]] = observable, _ref2;
+      }
+    }
+  });
+
+  // node_modules/redux/lib/utils/warning.js
+  var require_warning = __commonJS({
+    "node_modules/redux/lib/utils/warning.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      exports["default"] = warning;
+      function warning(message) {
+        if (typeof console !== "undefined" && typeof console.error === "function") {
+          console.error(message);
+        }
+        try {
+          throw new Error(message);
+        } catch (e) {
+        }
+      }
+    }
+  });
+
+  // node_modules/redux/lib/combineReducers.js
+  var require_combineReducers = __commonJS({
+    "node_modules/redux/lib/combineReducers.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      exports["default"] = combineReducers2;
+      var _createStore = require_createStore();
+      var _isPlainObject = require_isPlainObject();
+      var _isPlainObject2 = _interopRequireDefault(_isPlainObject);
+      var _warning = require_warning();
+      var _warning2 = _interopRequireDefault(_warning);
+      function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : { "default": obj };
+      }
+      function getUndefinedStateErrorMessage(key, action) {
+        var actionType = action && action.type;
+        var actionName = actionType && '"' + actionType.toString() + '"' || "an action";
+        return "Given action " + actionName + ', reducer "' + key + '" returned undefined. To ignore an action, you must explicitly return the previous state.';
+      }
+      function assertReducerSanity(reducers) {
+        Object.keys(reducers).forEach(function(key) {
+          var reducer = reducers[key];
+          var initialState5 = reducer(void 0, { type: _createStore.ActionTypes.INIT });
+          if (typeof initialState5 === "undefined") {
+            throw new Error('Reducer "' + key + '" returned undefined during initialization. If the state passed to the reducer is undefined, you must explicitly return the initial state. The initial state may not be undefined.');
+          }
+          var type = "@@redux/PROBE_UNKNOWN_ACTION_" + Math.random().toString(36).substring(7).split("").join(".");
+          if (typeof reducer(void 0, { type }) === "undefined") {
+            throw new Error('Reducer "' + key + '" returned undefined when probed with a random type. ' + ("Don't try to handle " + _createStore.ActionTypes.INIT + ' or other actions in "redux/*" ') + "namespace. They are considered private. Instead, you must return the current state for any unknown actions, unless it is undefined, in which case you must return the initial state, regardless of the action type. The initial state may not be undefined.");
+          }
+        });
+      }
+      function combineReducers2(reducers) {
+        var reducerKeys = Object.keys(reducers);
+        var finalReducers = {};
+        for (var i = 0; i < reducerKeys.length; i++) {
+          var key = reducerKeys[i];
+          if (false) {
+            if (typeof reducers[key] === "undefined") {
+              (0, _warning2["default"])('No reducer provided for key "' + key + '"');
+            }
+          }
+          if (typeof reducers[key] === "function") {
+            finalReducers[key] = reducers[key];
+          }
+        }
+        var finalReducerKeys = Object.keys(finalReducers);
+        if (false) {
+          var unexpectedKeyCache = {};
+        }
+        var sanityError;
+        try {
+          assertReducerSanity(finalReducers);
+        } catch (e) {
+          sanityError = e;
+        }
+        return function combination() {
+          var state = arguments.length <= 0 || arguments[0] === void 0 ? {} : arguments[0];
+          var action = arguments[1];
+          if (sanityError) {
+            throw sanityError;
+          }
+          if (false) {
+            var warningMessage = getUnexpectedStateShapeWarningMessage(state, finalReducers, action, unexpectedKeyCache);
+            if (warningMessage) {
+              (0, _warning2["default"])(warningMessage);
+            }
+          }
+          var hasChanged = false;
+          var nextState = {};
+          for (var i2 = 0; i2 < finalReducerKeys.length; i2++) {
+            var key2 = finalReducerKeys[i2];
+            var reducer = finalReducers[key2];
+            var previousStateForKey = state[key2];
+            var nextStateForKey = reducer(previousStateForKey, action);
+            if (typeof nextStateForKey === "undefined") {
+              var errorMessage = getUndefinedStateErrorMessage(key2, action);
+              throw new Error(errorMessage);
+            }
+            nextState[key2] = nextStateForKey;
+            hasChanged = hasChanged || nextStateForKey !== previousStateForKey;
+          }
+          return hasChanged ? nextState : state;
+        };
+      }
+    }
+  });
+
+  // node_modules/redux/lib/bindActionCreators.js
+  var require_bindActionCreators = __commonJS({
+    "node_modules/redux/lib/bindActionCreators.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      exports["default"] = bindActionCreators;
+      function bindActionCreator(actionCreator, dispatch) {
+        return function() {
+          return dispatch(actionCreator.apply(void 0, arguments));
+        };
+      }
+      function bindActionCreators(actionCreators, dispatch) {
+        if (typeof actionCreators === "function") {
+          return bindActionCreator(actionCreators, dispatch);
+        }
+        if (typeof actionCreators !== "object" || actionCreators === null) {
+          throw new Error("bindActionCreators expected an object or a function, instead received " + (actionCreators === null ? "null" : typeof actionCreators) + '. Did you write "import ActionCreators from" instead of "import * as ActionCreators from"?');
+        }
+        var keys = Object.keys(actionCreators);
+        var boundActionCreators = {};
+        for (var i = 0; i < keys.length; i++) {
+          var key = keys[i];
+          var actionCreator = actionCreators[key];
+          if (typeof actionCreator === "function") {
+            boundActionCreators[key] = bindActionCreator(actionCreator, dispatch);
+          }
+        }
+        return boundActionCreators;
+      }
+    }
+  });
+
+  // node_modules/redux/lib/compose.js
+  var require_compose = __commonJS({
+    "node_modules/redux/lib/compose.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      exports["default"] = compose2;
+      function compose2() {
+        for (var _len = arguments.length, funcs = Array(_len), _key = 0; _key < _len; _key++) {
+          funcs[_key] = arguments[_key];
+        }
+        if (funcs.length === 0) {
+          return function(arg) {
+            return arg;
+          };
+        }
+        if (funcs.length === 1) {
+          return funcs[0];
+        }
+        var last = funcs[funcs.length - 1];
+        var rest = funcs.slice(0, -1);
+        return function() {
+          return rest.reduceRight(function(composed, f) {
+            return f(composed);
+          }, last.apply(void 0, arguments));
+        };
+      }
+    }
+  });
+
+  // node_modules/redux/lib/applyMiddleware.js
+  var require_applyMiddleware = __commonJS({
+    "node_modules/redux/lib/applyMiddleware.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      var _extends = Object.assign || function(target) {
+        for (var i = 1; i < arguments.length; i++) {
+          var source = arguments[i];
+          for (var key in source) {
+            if (Object.prototype.hasOwnProperty.call(source, key)) {
+              target[key] = source[key];
+            }
+          }
+        }
+        return target;
+      };
+      exports["default"] = applyMiddleware;
+      var _compose = require_compose();
+      var _compose2 = _interopRequireDefault(_compose);
+      function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : { "default": obj };
+      }
+      function applyMiddleware() {
+        for (var _len = arguments.length, middlewares = Array(_len), _key = 0; _key < _len; _key++) {
+          middlewares[_key] = arguments[_key];
+        }
+        return function(createStore) {
+          return function(reducer, preloadedState, enhancer) {
+            var store = createStore(reducer, preloadedState, enhancer);
+            var _dispatch = store.dispatch;
+            var chain = [];
+            var middlewareAPI = {
+              getState: store.getState,
+              dispatch: function dispatch(action) {
+                return _dispatch(action);
+              }
+            };
+            chain = middlewares.map(function(middleware) {
+              return middleware(middlewareAPI);
+            });
+            _dispatch = _compose2["default"].apply(void 0, chain)(store.dispatch);
+            return _extends({}, store, {
+              dispatch: _dispatch
+            });
+          };
+        };
+      }
+    }
+  });
+
+  // node_modules/redux/lib/index.js
+  var require_lib2 = __commonJS({
+    "node_modules/redux/lib/index.js"(exports) {
+      "use strict";
+      exports.__esModule = true;
+      exports.compose = exports.applyMiddleware = exports.bindActionCreators = exports.combineReducers = exports.createStore = void 0;
+      var _createStore = require_createStore();
+      var _createStore2 = _interopRequireDefault(_createStore);
+      var _combineReducers = require_combineReducers();
+      var _combineReducers2 = _interopRequireDefault(_combineReducers);
+      var _bindActionCreators = require_bindActionCreators();
+      var _bindActionCreators2 = _interopRequireDefault(_bindActionCreators);
+      var _applyMiddleware = require_applyMiddleware();
+      var _applyMiddleware2 = _interopRequireDefault(_applyMiddleware);
+      var _compose = require_compose();
+      var _compose2 = _interopRequireDefault(_compose);
+      var _warning = require_warning();
+      var _warning2 = _interopRequireDefault(_warning);
+      function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : { "default": obj };
+      }
+      if (false) {
+        (0, _warning2["default"])("You are currently using minified code outside of NODE_ENV === 'production'. This means that you are running a slower development build of Redux. You can use loose-envify (https://github.com/zertosh/loose-envify) for browserify or DefinePlugin for webpack (http://stackoverflow.com/questions/30030031) to ensure you have the correct code for your production build.");
+      }
+      exports.createStore = _createStore2["default"];
+      exports.combineReducers = _combineReducers2["default"];
+      exports.bindActionCreators = _bindActionCreators2["default"];
+      exports.applyMiddleware = _applyMiddleware2["default"];
+      exports.compose = _compose2["default"];
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/trigger-events.ts
+  var EventTypeConsts, EventAppliesTo, EventBasedOn, EventContinuousMouseAxes, EventLimitAffectedElements, QuickEffectIds, QuickEffectDirectionConsts;
+  var init_trigger_events = __esm({
+    "packages/systems/ix2/shared-constants/trigger-events.ts"() {
+      "use strict";
+      EventTypeConsts = {
+        NAVBAR_OPEN: "NAVBAR_OPEN",
+        NAVBAR_CLOSE: "NAVBAR_CLOSE",
+        TAB_ACTIVE: "TAB_ACTIVE",
+        TAB_INACTIVE: "TAB_INACTIVE",
+        SLIDER_ACTIVE: "SLIDER_ACTIVE",
+        SLIDER_INACTIVE: "SLIDER_INACTIVE",
+        DROPDOWN_OPEN: "DROPDOWN_OPEN",
+        DROPDOWN_CLOSE: "DROPDOWN_CLOSE",
+        MOUSE_CLICK: "MOUSE_CLICK",
+        MOUSE_SECOND_CLICK: "MOUSE_SECOND_CLICK",
+        MOUSE_DOWN: "MOUSE_DOWN",
+        MOUSE_UP: "MOUSE_UP",
+        MOUSE_OVER: "MOUSE_OVER",
+        MOUSE_OUT: "MOUSE_OUT",
+        MOUSE_MOVE: "MOUSE_MOVE",
+        MOUSE_MOVE_IN_VIEWPORT: "MOUSE_MOVE_IN_VIEWPORT",
+        SCROLL_INTO_VIEW: "SCROLL_INTO_VIEW",
+        SCROLL_OUT_OF_VIEW: "SCROLL_OUT_OF_VIEW",
+        SCROLLING_IN_VIEW: "SCROLLING_IN_VIEW",
+        ECOMMERCE_CART_OPEN: "ECOMMERCE_CART_OPEN",
+        ECOMMERCE_CART_CLOSE: "ECOMMERCE_CART_CLOSE",
+        PAGE_START: "PAGE_START",
+        PAGE_FINISH: "PAGE_FINISH",
+        PAGE_SCROLL_UP: "PAGE_SCROLL_UP",
+        PAGE_SCROLL_DOWN: "PAGE_SCROLL_DOWN",
+        PAGE_SCROLL: "PAGE_SCROLL"
+      };
+      EventAppliesTo = {
+        ELEMENT: "ELEMENT",
+        CLASS: "CLASS",
+        PAGE: "PAGE"
+      };
+      EventBasedOn = {
+        ELEMENT: "ELEMENT",
+        VIEWPORT: "VIEWPORT"
+      };
+      EventContinuousMouseAxes = {
+        X_AXIS: "X_AXIS",
+        Y_AXIS: "Y_AXIS"
+      };
+      EventLimitAffectedElements = {
+        CHILDREN: "CHILDREN",
+        SIBLINGS: "SIBLINGS",
+        IMMEDIATE_CHILDREN: "IMMEDIATE_CHILDREN"
+      };
+      QuickEffectIds = {
+        FADE_EFFECT: "FADE_EFFECT",
+        SLIDE_EFFECT: "SLIDE_EFFECT",
+        GROW_EFFECT: "GROW_EFFECT",
+        SHRINK_EFFECT: "SHRINK_EFFECT",
+        SPIN_EFFECT: "SPIN_EFFECT",
+        FLY_EFFECT: "FLY_EFFECT",
+        POP_EFFECT: "POP_EFFECT",
+        FLIP_EFFECT: "FLIP_EFFECT",
+        JIGGLE_EFFECT: "JIGGLE_EFFECT",
+        PULSE_EFFECT: "PULSE_EFFECT",
+        DROP_EFFECT: "DROP_EFFECT",
+        BLINK_EFFECT: "BLINK_EFFECT",
+        BOUNCE_EFFECT: "BOUNCE_EFFECT",
+        FLIP_LEFT_TO_RIGHT_EFFECT: "FLIP_LEFT_TO_RIGHT_EFFECT",
+        FLIP_RIGHT_TO_LEFT_EFFECT: "FLIP_RIGHT_TO_LEFT_EFFECT",
+        RUBBER_BAND_EFFECT: "RUBBER_BAND_EFFECT",
+        JELLO_EFFECT: "JELLO_EFFECT",
+        GROW_BIG_EFFECT: "GROW_BIG_EFFECT",
+        SHRINK_BIG_EFFECT: "SHRINK_BIG_EFFECT",
+        PLUGIN_LOTTIE_EFFECT: "PLUGIN_LOTTIE_EFFECT"
+      };
+      QuickEffectDirectionConsts = {
+        LEFT: "LEFT",
+        RIGHT: "RIGHT",
+        BOTTOM: "BOTTOM",
+        TOP: "TOP",
+        BOTTOM_LEFT: "BOTTOM_LEFT",
+        BOTTOM_RIGHT: "BOTTOM_RIGHT",
+        TOP_RIGHT: "TOP_RIGHT",
+        TOP_LEFT: "TOP_LEFT",
+        CLOCKWISE: "CLOCKWISE",
+        COUNTER_CLOCKWISE: "COUNTER_CLOCKWISE"
+      };
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/animation-actions.ts
+  var ActionTypeConsts, ActionAppliesTo;
+  var init_animation_actions = __esm({
+    "packages/systems/ix2/shared-constants/animation-actions.ts"() {
+      "use strict";
+      ActionTypeConsts = {
+        TRANSFORM_MOVE: "TRANSFORM_MOVE",
+        TRANSFORM_SCALE: "TRANSFORM_SCALE",
+        TRANSFORM_ROTATE: "TRANSFORM_ROTATE",
+        TRANSFORM_SKEW: "TRANSFORM_SKEW",
+        STYLE_OPACITY: "STYLE_OPACITY",
+        STYLE_SIZE: "STYLE_SIZE",
+        STYLE_FILTER: "STYLE_FILTER",
+        STYLE_FONT_VARIATION: "STYLE_FONT_VARIATION",
+        STYLE_BACKGROUND_COLOR: "STYLE_BACKGROUND_COLOR",
+        STYLE_BORDER: "STYLE_BORDER",
+        STYLE_TEXT_COLOR: "STYLE_TEXT_COLOR",
+        OBJECT_VALUE: "OBJECT_VALUE",
+        PLUGIN_LOTTIE: "PLUGIN_LOTTIE",
+        PLUGIN_SPLINE: "PLUGIN_SPLINE",
+        PLUGIN_VARIABLE: "PLUGIN_VARIABLE",
+        GENERAL_DISPLAY: "GENERAL_DISPLAY",
+        GENERAL_START_ACTION: "GENERAL_START_ACTION",
+        GENERAL_CONTINUOUS_ACTION: "GENERAL_CONTINUOUS_ACTION",
+        // TODO: Clean these up below because they're not used at this time
+        GENERAL_COMBO_CLASS: "GENERAL_COMBO_CLASS",
+        GENERAL_STOP_ACTION: "GENERAL_STOP_ACTION",
+        GENERAL_LOOP: "GENERAL_LOOP",
+        STYLE_BOX_SHADOW: "STYLE_BOX_SHADOW"
+      };
+      ActionAppliesTo = {
+        ELEMENT: "ELEMENT",
+        ELEMENT_CLASS: "ELEMENT_CLASS",
+        TRIGGER_ELEMENT: "TRIGGER_ELEMENT"
+      };
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/trigger-interactions.ts
+  var InteractionTypeConsts;
+  var init_trigger_interactions = __esm({
+    "packages/systems/ix2/shared-constants/trigger-interactions.ts"() {
+      "use strict";
+      InteractionTypeConsts = {
+        MOUSE_CLICK_INTERACTION: "MOUSE_CLICK_INTERACTION",
+        MOUSE_HOVER_INTERACTION: "MOUSE_HOVER_INTERACTION",
+        MOUSE_MOVE_INTERACTION: "MOUSE_MOVE_INTERACTION",
+        SCROLL_INTO_VIEW_INTERACTION: "SCROLL_INTO_VIEW_INTERACTION",
+        SCROLLING_IN_VIEW_INTERACTION: "SCROLLING_IN_VIEW_INTERACTION",
+        MOUSE_MOVE_IN_VIEWPORT_INTERACTION: "MOUSE_MOVE_IN_VIEWPORT_INTERACTION",
+        PAGE_IS_SCROLLING_INTERACTION: "PAGE_IS_SCROLLING_INTERACTION",
+        PAGE_LOAD_INTERACTION: "PAGE_LOAD_INTERACTION",
+        PAGE_SCROLLED_INTERACTION: "PAGE_SCROLLED_INTERACTION",
+        NAVBAR_INTERACTION: "NAVBAR_INTERACTION",
+        DROPDOWN_INTERACTION: "DROPDOWN_INTERACTION",
+        ECOMMERCE_CART_INTERACTION: "ECOMMERCE_CART_INTERACTION",
+        TAB_INTERACTION: "TAB_INTERACTION",
+        SLIDER_INTERACTION: "SLIDER_INTERACTION"
+      };
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/reduced-motion.ts
+  var TRANSFORM_MOVE, TRANSFORM_SCALE, TRANSFORM_ROTATE, TRANSFORM_SKEW, STYLE_SIZE, STYLE_FILTER, STYLE_FONT_VARIATION, ReducedMotionTypes;
+  var init_reduced_motion = __esm({
+    "packages/systems/ix2/shared-constants/reduced-motion.ts"() {
+      "use strict";
+      init_animation_actions();
+      ({
+        TRANSFORM_MOVE,
+        TRANSFORM_SCALE,
+        TRANSFORM_ROTATE,
+        TRANSFORM_SKEW,
+        STYLE_SIZE,
+        STYLE_FILTER,
+        STYLE_FONT_VARIATION
+      } = ActionTypeConsts);
+      ReducedMotionTypes = {
+        [TRANSFORM_MOVE]: true,
+        [TRANSFORM_SCALE]: true,
+        [TRANSFORM_ROTATE]: true,
+        [TRANSFORM_SKEW]: true,
+        [STYLE_SIZE]: true,
+        [STYLE_FILTER]: true,
+        [STYLE_FONT_VARIATION]: true
+      };
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/IX2EngineActionTypes.ts
+  var IX2EngineActionTypes_exports = {};
+  __export(IX2EngineActionTypes_exports, {
+    IX2_ACTION_LIST_PLAYBACK_CHANGED: () => IX2_ACTION_LIST_PLAYBACK_CHANGED,
+    IX2_ANIMATION_FRAME_CHANGED: () => IX2_ANIMATION_FRAME_CHANGED,
+    IX2_CLEAR_REQUESTED: () => IX2_CLEAR_REQUESTED,
+    IX2_ELEMENT_STATE_CHANGED: () => IX2_ELEMENT_STATE_CHANGED,
+    IX2_EVENT_LISTENER_ADDED: () => IX2_EVENT_LISTENER_ADDED,
+    IX2_EVENT_STATE_CHANGED: () => IX2_EVENT_STATE_CHANGED,
+    IX2_INSTANCE_ADDED: () => IX2_INSTANCE_ADDED,
+    IX2_INSTANCE_REMOVED: () => IX2_INSTANCE_REMOVED,
+    IX2_INSTANCE_STARTED: () => IX2_INSTANCE_STARTED,
+    IX2_MEDIA_QUERIES_DEFINED: () => IX2_MEDIA_QUERIES_DEFINED,
+    IX2_PARAMETER_CHANGED: () => IX2_PARAMETER_CHANGED,
+    IX2_PLAYBACK_REQUESTED: () => IX2_PLAYBACK_REQUESTED,
+    IX2_PREVIEW_REQUESTED: () => IX2_PREVIEW_REQUESTED,
+    IX2_RAW_DATA_IMPORTED: () => IX2_RAW_DATA_IMPORTED,
+    IX2_SESSION_INITIALIZED: () => IX2_SESSION_INITIALIZED,
+    IX2_SESSION_STARTED: () => IX2_SESSION_STARTED,
+    IX2_SESSION_STOPPED: () => IX2_SESSION_STOPPED,
+    IX2_STOP_REQUESTED: () => IX2_STOP_REQUESTED,
+    IX2_TEST_FRAME_RENDERED: () => IX2_TEST_FRAME_RENDERED,
+    IX2_VIEWPORT_WIDTH_CHANGED: () => IX2_VIEWPORT_WIDTH_CHANGED
+  });
+  var IX2_RAW_DATA_IMPORTED, IX2_SESSION_INITIALIZED, IX2_SESSION_STARTED, IX2_SESSION_STOPPED, IX2_PREVIEW_REQUESTED, IX2_PLAYBACK_REQUESTED, IX2_STOP_REQUESTED, IX2_CLEAR_REQUESTED, IX2_EVENT_LISTENER_ADDED, IX2_EVENT_STATE_CHANGED, IX2_ANIMATION_FRAME_CHANGED, IX2_PARAMETER_CHANGED, IX2_INSTANCE_ADDED, IX2_INSTANCE_STARTED, IX2_INSTANCE_REMOVED, IX2_ELEMENT_STATE_CHANGED, IX2_ACTION_LIST_PLAYBACK_CHANGED, IX2_VIEWPORT_WIDTH_CHANGED, IX2_MEDIA_QUERIES_DEFINED, IX2_TEST_FRAME_RENDERED;
+  var init_IX2EngineActionTypes = __esm({
+    "packages/systems/ix2/shared-constants/IX2EngineActionTypes.ts"() {
+      "use strict";
+      IX2_RAW_DATA_IMPORTED = "IX2_RAW_DATA_IMPORTED";
+      IX2_SESSION_INITIALIZED = "IX2_SESSION_INITIALIZED";
+      IX2_SESSION_STARTED = "IX2_SESSION_STARTED";
+      IX2_SESSION_STOPPED = "IX2_SESSION_STOPPED";
+      IX2_PREVIEW_REQUESTED = "IX2_PREVIEW_REQUESTED";
+      IX2_PLAYBACK_REQUESTED = "IX2_PLAYBACK_REQUESTED";
+      IX2_STOP_REQUESTED = "IX2_STOP_REQUESTED";
+      IX2_CLEAR_REQUESTED = "IX2_CLEAR_REQUESTED";
+      IX2_EVENT_LISTENER_ADDED = "IX2_EVENT_LISTENER_ADDED";
+      IX2_EVENT_STATE_CHANGED = "IX2_EVENT_STATE_CHANGED";
+      IX2_ANIMATION_FRAME_CHANGED = "IX2_ANIMATION_FRAME_CHANGED";
+      IX2_PARAMETER_CHANGED = "IX2_PARAMETER_CHANGED";
+      IX2_INSTANCE_ADDED = "IX2_INSTANCE_ADDED";
+      IX2_INSTANCE_STARTED = "IX2_INSTANCE_STARTED";
+      IX2_INSTANCE_REMOVED = "IX2_INSTANCE_REMOVED";
+      IX2_ELEMENT_STATE_CHANGED = "IX2_ELEMENT_STATE_CHANGED";
+      IX2_ACTION_LIST_PLAYBACK_CHANGED = "IX2_ACTION_LIST_PLAYBACK_CHANGED";
+      IX2_VIEWPORT_WIDTH_CHANGED = "IX2_VIEWPORT_WIDTH_CHANGED";
+      IX2_MEDIA_QUERIES_DEFINED = "IX2_MEDIA_QUERIES_DEFINED";
+      IX2_TEST_FRAME_RENDERED = "IX2_TEST_FRAME_RENDERED";
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/IX2EngineConstants.ts
+  var IX2EngineConstants_exports = {};
+  __export(IX2EngineConstants_exports, {
+    ABSTRACT_NODE: () => ABSTRACT_NODE,
+    AUTO: () => AUTO,
+    BACKGROUND: () => BACKGROUND,
+    BACKGROUND_COLOR: () => BACKGROUND_COLOR,
+    BAR_DELIMITER: () => BAR_DELIMITER,
+    BORDER_COLOR: () => BORDER_COLOR,
+    BOUNDARY_SELECTOR: () => BOUNDARY_SELECTOR,
+    CHILDREN: () => CHILDREN,
+    COLON_DELIMITER: () => COLON_DELIMITER,
+    COLOR: () => COLOR,
+    COMMA_DELIMITER: () => COMMA_DELIMITER,
+    CONFIG_UNIT: () => CONFIG_UNIT,
+    CONFIG_VALUE: () => CONFIG_VALUE,
+    CONFIG_X_UNIT: () => CONFIG_X_UNIT,
+    CONFIG_X_VALUE: () => CONFIG_X_VALUE,
+    CONFIG_Y_UNIT: () => CONFIG_Y_UNIT,
+    CONFIG_Y_VALUE: () => CONFIG_Y_VALUE,
+    CONFIG_Z_UNIT: () => CONFIG_Z_UNIT,
+    CONFIG_Z_VALUE: () => CONFIG_Z_VALUE,
+    DISPLAY: () => DISPLAY,
+    FILTER: () => FILTER,
+    FLEX: () => FLEX,
+    FONT_VARIATION_SETTINGS: () => FONT_VARIATION_SETTINGS,
+    HEIGHT: () => HEIGHT,
+    HTML_ELEMENT: () => HTML_ELEMENT,
+    IMMEDIATE_CHILDREN: () => IMMEDIATE_CHILDREN,
+    IX2_ID_DELIMITER: () => IX2_ID_DELIMITER,
+    OPACITY: () => OPACITY,
+    PARENT: () => PARENT,
+    PLAIN_OBJECT: () => PLAIN_OBJECT,
+    PRESERVE_3D: () => PRESERVE_3D,
+    RENDER_GENERAL: () => RENDER_GENERAL,
+    RENDER_PLUGIN: () => RENDER_PLUGIN,
+    RENDER_STYLE: () => RENDER_STYLE,
+    RENDER_TRANSFORM: () => RENDER_TRANSFORM,
+    ROTATE_X: () => ROTATE_X,
+    ROTATE_Y: () => ROTATE_Y,
+    ROTATE_Z: () => ROTATE_Z,
+    SCALE_3D: () => SCALE_3D,
+    SCALE_X: () => SCALE_X,
+    SCALE_Y: () => SCALE_Y,
+    SCALE_Z: () => SCALE_Z,
+    SIBLINGS: () => SIBLINGS,
+    SKEW: () => SKEW,
+    SKEW_X: () => SKEW_X,
+    SKEW_Y: () => SKEW_Y,
+    TRANSFORM: () => TRANSFORM,
+    TRANSLATE_3D: () => TRANSLATE_3D,
+    TRANSLATE_X: () => TRANSLATE_X,
+    TRANSLATE_Y: () => TRANSLATE_Y,
+    TRANSLATE_Z: () => TRANSLATE_Z,
+    WF_PAGE: () => WF_PAGE,
+    WIDTH: () => WIDTH,
+    WILL_CHANGE: () => WILL_CHANGE,
+    W_MOD_IX: () => W_MOD_IX,
+    W_MOD_JS: () => W_MOD_JS
+  });
+  var IX2_ID_DELIMITER, WF_PAGE, W_MOD_JS, W_MOD_IX, BOUNDARY_SELECTOR, CONFIG_X_VALUE, CONFIG_Y_VALUE, CONFIG_Z_VALUE, CONFIG_VALUE, CONFIG_X_UNIT, CONFIG_Y_UNIT, CONFIG_Z_UNIT, CONFIG_UNIT, TRANSFORM, TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z, TRANSLATE_3D, SCALE_X, SCALE_Y, SCALE_Z, SCALE_3D, ROTATE_X, ROTATE_Y, ROTATE_Z, SKEW, SKEW_X, SKEW_Y, OPACITY, FILTER, FONT_VARIATION_SETTINGS, WIDTH, HEIGHT, BACKGROUND_COLOR, BACKGROUND, BORDER_COLOR, COLOR, DISPLAY, FLEX, WILL_CHANGE, AUTO, COMMA_DELIMITER, COLON_DELIMITER, BAR_DELIMITER, CHILDREN, IMMEDIATE_CHILDREN, SIBLINGS, PARENT, PRESERVE_3D, HTML_ELEMENT, PLAIN_OBJECT, ABSTRACT_NODE, RENDER_TRANSFORM, RENDER_GENERAL, RENDER_STYLE, RENDER_PLUGIN;
+  var init_IX2EngineConstants = __esm({
+    "packages/systems/ix2/shared-constants/IX2EngineConstants.ts"() {
+      "use strict";
+      IX2_ID_DELIMITER = "|";
+      WF_PAGE = "data-wf-page";
+      W_MOD_JS = "w-mod-js";
+      W_MOD_IX = "w-mod-ix";
+      BOUNDARY_SELECTOR = ".w-dyn-item";
+      CONFIG_X_VALUE = "xValue";
+      CONFIG_Y_VALUE = "yValue";
+      CONFIG_Z_VALUE = "zValue";
+      CONFIG_VALUE = "value";
+      CONFIG_X_UNIT = "xUnit";
+      CONFIG_Y_UNIT = "yUnit";
+      CONFIG_Z_UNIT = "zUnit";
+      CONFIG_UNIT = "unit";
+      TRANSFORM = "transform";
+      TRANSLATE_X = "translateX";
+      TRANSLATE_Y = "translateY";
+      TRANSLATE_Z = "translateZ";
+      TRANSLATE_3D = "translate3d";
+      SCALE_X = "scaleX";
+      SCALE_Y = "scaleY";
+      SCALE_Z = "scaleZ";
+      SCALE_3D = "scale3d";
+      ROTATE_X = "rotateX";
+      ROTATE_Y = "rotateY";
+      ROTATE_Z = "rotateZ";
+      SKEW = "skew";
+      SKEW_X = "skewX";
+      SKEW_Y = "skewY";
+      OPACITY = "opacity";
+      FILTER = "filter";
+      FONT_VARIATION_SETTINGS = "font-variation-settings";
+      WIDTH = "width";
+      HEIGHT = "height";
+      BACKGROUND_COLOR = "backgroundColor";
+      BACKGROUND = "background";
+      BORDER_COLOR = "borderColor";
+      COLOR = "color";
+      DISPLAY = "display";
+      FLEX = "flex";
+      WILL_CHANGE = "willChange";
+      AUTO = "AUTO";
+      COMMA_DELIMITER = ",";
+      COLON_DELIMITER = ":";
+      BAR_DELIMITER = "|";
+      CHILDREN = "CHILDREN";
+      IMMEDIATE_CHILDREN = "IMMEDIATE_CHILDREN";
+      SIBLINGS = "SIBLINGS";
+      PARENT = "PARENT";
+      PRESERVE_3D = "preserve-3d";
+      HTML_ELEMENT = "HTML_ELEMENT";
+      PLAIN_OBJECT = "PLAIN_OBJECT";
+      ABSTRACT_NODE = "ABSTRACT_NODE";
+      RENDER_TRANSFORM = "RENDER_TRANSFORM";
+      RENDER_GENERAL = "RENDER_GENERAL";
+      RENDER_STYLE = "RENDER_STYLE";
+      RENDER_PLUGIN = "RENDER_PLUGIN";
+    }
+  });
+
+  // packages/systems/ix2/shared-constants/index.ts
+  var shared_constants_exports = {};
+  __export(shared_constants_exports, {
+    ActionAppliesTo: () => ActionAppliesTo,
+    ActionTypeConsts: () => ActionTypeConsts,
+    EventAppliesTo: () => EventAppliesTo,
+    EventBasedOn: () => EventBasedOn,
+    EventContinuousMouseAxes: () => EventContinuousMouseAxes,
+    EventLimitAffectedElements: () => EventLimitAffectedElements,
+    EventTypeConsts: () => EventTypeConsts,
+    IX2EngineActionTypes: () => IX2EngineActionTypes_exports,
+    IX2EngineConstants: () => IX2EngineConstants_exports,
+    InteractionTypeConsts: () => InteractionTypeConsts,
+    QuickEffectDirectionConsts: () => QuickEffectDirectionConsts,
+    QuickEffectIds: () => QuickEffectIds,
+    ReducedMotionTypes: () => ReducedMotionTypes
+  });
+  var init_shared_constants = __esm({
+    "packages/systems/ix2/shared-constants/index.ts"() {
+      "use strict";
+      init_trigger_events();
+      init_animation_actions();
+      init_trigger_interactions();
+      init_reduced_motion();
+      init_IX2EngineActionTypes();
+      init_IX2EngineConstants();
+      init_animation_actions();
+      init_trigger_events();
+    }
+  });
+
+  // packages/systems/ix2/engine/reducers/IX2DataReducer.ts
+  var IX2_RAW_DATA_IMPORTED2, ixData;
+  var init_IX2DataReducer = __esm({
+    "packages/systems/ix2/engine/reducers/IX2DataReducer.ts"() {
+      "use strict";
+      init_shared_constants();
+      ({ IX2_RAW_DATA_IMPORTED: IX2_RAW_DATA_IMPORTED2 } = IX2EngineActionTypes_exports);
+      ixData = (state = Object.freeze(
+        {}
+      ), action) => {
+        switch (action.type) {
+          case IX2_RAW_DATA_IMPORTED2: {
+            return action.payload.ixData || Object.freeze({});
+          }
+          default: {
+            return state;
+          }
+        }
+      };
+    }
+  });
+
+  // node_modules/timm/lib/timm.js
+  var require_timm = __commonJS({
+    "node_modules/timm/lib/timm.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function(obj) {
+        return typeof obj;
+      } : function(obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+      };
+      exports.clone = clone;
+      exports.addLast = addLast2;
+      exports.addFirst = addFirst;
+      exports.removeLast = removeLast;
+      exports.removeFirst = removeFirst;
+      exports.insert = insert;
+      exports.removeAt = removeAt;
+      exports.replaceAt = replaceAt;
+      exports.getIn = getIn3;
+      exports.set = set3;
+      exports.setIn = setIn4;
+      exports.update = update;
+      exports.updateIn = updateIn;
+      exports.merge = merge4;
+      exports.mergeDeep = mergeDeep2;
+      exports.mergeIn = mergeIn4;
+      exports.omit = omit;
+      exports.addDefaults = addDefaults;
+      var INVALID_ARGS = "INVALID_ARGS";
+      function throwStr(msg) {
+        throw new Error(msg);
+      }
+      function getKeysAndSymbols(obj) {
+        var keys = Object.keys(obj);
+        if (Object.getOwnPropertySymbols) {
+          return keys.concat(Object.getOwnPropertySymbols(obj));
+        }
+        return keys;
+      }
+      var hasOwnProperty9 = {}.hasOwnProperty;
+      function clone(obj) {
+        if (Array.isArray(obj))
+          return obj.slice();
+        var keys = getKeysAndSymbols(obj);
+        var out = {};
+        for (var i = 0; i < keys.length; i++) {
+          var key = keys[i];
+          out[key] = obj[key];
+        }
+        return out;
+      }
+      function doMerge(fAddDefaults, fDeep, first) {
+        var out = first;
+        !(out != null) && throwStr(false ? "At least one object should be provided to merge()" : INVALID_ARGS);
+        var fChanged = false;
+        for (var _len = arguments.length, rest = Array(_len > 3 ? _len - 3 : 0), _key = 3; _key < _len; _key++) {
+          rest[_key - 3] = arguments[_key];
+        }
+        for (var idx = 0; idx < rest.length; idx++) {
+          var obj = rest[idx];
+          if (obj == null)
+            continue;
+          var keys = getKeysAndSymbols(obj);
+          if (!keys.length)
+            continue;
+          for (var j = 0; j <= keys.length; j++) {
+            var key = keys[j];
+            if (fAddDefaults && out[key] !== void 0)
+              continue;
+            var nextVal = obj[key];
+            if (fDeep && isObject2(out[key]) && isObject2(nextVal)) {
+              nextVal = doMerge(fAddDefaults, fDeep, out[key], nextVal);
+            }
+            if (nextVal === void 0 || nextVal === out[key])
+              continue;
+            if (!fChanged) {
+              fChanged = true;
+              out = clone(out);
+            }
+            out[key] = nextVal;
+          }
+        }
+        return out;
+      }
+      function isObject2(o) {
+        var type = typeof o === "undefined" ? "undefined" : _typeof(o);
+        return o != null && (type === "object" || type === "function");
+      }
+      function addLast2(array, val) {
+        if (Array.isArray(val))
+          return array.concat(val);
+        return array.concat([val]);
+      }
+      function addFirst(array, val) {
+        if (Array.isArray(val))
+          return val.concat(array);
+        return [val].concat(array);
+      }
+      function removeLast(array) {
+        if (!array.length)
+          return array;
+        return array.slice(0, array.length - 1);
+      }
+      function removeFirst(array) {
+        if (!array.length)
+          return array;
+        return array.slice(1);
+      }
+      function insert(array, idx, val) {
+        return array.slice(0, idx).concat(Array.isArray(val) ? val : [val]).concat(array.slice(idx));
+      }
+      function removeAt(array, idx) {
+        if (idx >= array.length || idx < 0)
+          return array;
+        return array.slice(0, idx).concat(array.slice(idx + 1));
+      }
+      function replaceAt(array, idx, newItem) {
+        if (array[idx] === newItem)
+          return array;
+        var len = array.length;
+        var result2 = Array(len);
+        for (var i = 0; i < len; i++) {
+          result2[i] = array[i];
+        }
+        result2[idx] = newItem;
+        return result2;
+      }
+      function getIn3(obj, path) {
+        !Array.isArray(path) && throwStr(false ? "A path array should be provided when calling getIn()" : INVALID_ARGS);
+        if (obj == null)
+          return void 0;
+        var ptr = obj;
+        for (var i = 0; i < path.length; i++) {
+          var key = path[i];
+          ptr = ptr != null ? ptr[key] : void 0;
+          if (ptr === void 0)
+            return ptr;
+        }
+        return ptr;
+      }
+      function set3(obj, key, val) {
+        var fallback = typeof key === "number" ? [] : {};
+        var finalObj = obj == null ? fallback : obj;
+        if (finalObj[key] === val)
+          return finalObj;
+        var obj2 = clone(finalObj);
+        obj2[key] = val;
+        return obj2;
+      }
+      function doSetIn(obj, path, val, idx) {
+        var newValue = void 0;
+        var key = path[idx];
+        if (idx === path.length - 1) {
+          newValue = val;
+        } else {
+          var nestedObj = isObject2(obj) && isObject2(obj[key]) ? obj[key] : typeof path[idx + 1] === "number" ? [] : {};
+          newValue = doSetIn(nestedObj, path, val, idx + 1);
+        }
+        return set3(obj, key, newValue);
+      }
+      function setIn4(obj, path, val) {
+        if (!path.length)
+          return val;
+        return doSetIn(obj, path, val, 0);
+      }
+      function update(obj, key, fnUpdate) {
+        var prevVal = obj == null ? void 0 : obj[key];
+        var nextVal = fnUpdate(prevVal);
+        return set3(obj, key, nextVal);
+      }
+      function updateIn(obj, path, fnUpdate) {
+        var prevVal = getIn3(obj, path);
+        var nextVal = fnUpdate(prevVal);
+        return setIn4(obj, path, nextVal);
+      }
+      function merge4(a, b, c, d, e, f) {
+        for (var _len2 = arguments.length, rest = Array(_len2 > 6 ? _len2 - 6 : 0), _key2 = 6; _key2 < _len2; _key2++) {
+          rest[_key2 - 6] = arguments[_key2];
+        }
+        return rest.length ? doMerge.call.apply(doMerge, [null, false, false, a, b, c, d, e, f].concat(rest)) : doMerge(false, false, a, b, c, d, e, f);
+      }
+      function mergeDeep2(a, b, c, d, e, f) {
+        for (var _len3 = arguments.length, rest = Array(_len3 > 6 ? _len3 - 6 : 0), _key3 = 6; _key3 < _len3; _key3++) {
+          rest[_key3 - 6] = arguments[_key3];
+        }
+        return rest.length ? doMerge.call.apply(doMerge, [null, false, true, a, b, c, d, e, f].concat(rest)) : doMerge(false, true, a, b, c, d, e, f);
+      }
+      function mergeIn4(a, path, b, c, d, e, f) {
+        var prevVal = getIn3(a, path);
+        if (prevVal == null)
+          prevVal = {};
+        var nextVal = void 0;
+        for (var _len4 = arguments.length, rest = Array(_len4 > 7 ? _len4 - 7 : 0), _key4 = 7; _key4 < _len4; _key4++) {
+          rest[_key4 - 7] = arguments[_key4];
+        }
+        if (rest.length) {
+          nextVal = doMerge.call.apply(doMerge, [null, false, false, prevVal, b, c, d, e, f].concat(rest));
+        } else {
+          nextVal = doMerge(false, false, prevVal, b, c, d, e, f);
+        }
+        return setIn4(a, path, nextVal);
+      }
+      function omit(obj, attrs) {
+        var omitList = Array.isArray(attrs) ? attrs : [attrs];
+        var fDoSomething = false;
+        for (var i = 0; i < omitList.length; i++) {
+          if (hasOwnProperty9.call(obj, omitList[i])) {
+            fDoSomething = true;
+            break;
+          }
+        }
+        if (!fDoSomething)
+          return obj;
+        var out = {};
+        var keys = getKeysAndSymbols(obj);
+        for (var _i = 0; _i < keys.length; _i++) {
+          var key = keys[_i];
+          if (omitList.indexOf(key) >= 0)
+            continue;
+          out[key] = obj[key];
+        }
+        return out;
+      }
+      function addDefaults(a, b, c, d, e, f) {
+        for (var _len5 = arguments.length, rest = Array(_len5 > 6 ? _len5 - 6 : 0), _key5 = 6; _key5 < _len5; _key5++) {
+          rest[_key5 - 6] = arguments[_key5];
+        }
+        return rest.length ? doMerge.call.apply(doMerge, [null, true, false, a, b, c, d, e, f].concat(rest)) : doMerge(true, false, a, b, c, d, e, f);
+      }
+      var timm = {
+        clone,
+        addLast: addLast2,
+        addFirst,
+        removeLast,
+        removeFirst,
+        insert,
+        removeAt,
+        replaceAt,
+        getIn: getIn3,
+        // eslint-disable-next-line object-shorthand
+        set: set3,
+        // so that flow doesn't complain
+        setIn: setIn4,
+        update,
+        updateIn,
+        merge: merge4,
+        mergeDeep: mergeDeep2,
+        mergeIn: mergeIn4,
+        omit,
+        addDefaults
+      };
+      exports.default = timm;
+    }
+  });
+
+  // packages/systems/ix2/engine/reducers/IX2RequestReducer.ts
+  var import_timm, IX2_PREVIEW_REQUESTED2, IX2_PLAYBACK_REQUESTED2, IX2_STOP_REQUESTED2, IX2_CLEAR_REQUESTED2, initialState, stateKeys, ixRequest;
+  var init_IX2RequestReducer = __esm({
+    "packages/systems/ix2/engine/reducers/IX2RequestReducer.ts"() {
+      "use strict";
+      init_shared_constants();
+      import_timm = __toESM(require_timm());
+      ({
+        IX2_PREVIEW_REQUESTED: IX2_PREVIEW_REQUESTED2,
+        IX2_PLAYBACK_REQUESTED: IX2_PLAYBACK_REQUESTED2,
+        IX2_STOP_REQUESTED: IX2_STOP_REQUESTED2,
+        IX2_CLEAR_REQUESTED: IX2_CLEAR_REQUESTED2
+      } = IX2EngineActionTypes_exports);
+      initialState = {
+        preview: {},
+        playback: {},
+        stop: {},
+        clear: {}
+      };
+      stateKeys = Object.create(null, {
+        [IX2_PREVIEW_REQUESTED2]: { value: "preview" },
+        [IX2_PLAYBACK_REQUESTED2]: { value: "playback" },
+        [IX2_STOP_REQUESTED2]: { value: "stop" },
+        [IX2_CLEAR_REQUESTED2]: { value: "clear" }
+      });
+      ixRequest = (state = initialState, action) => {
+        if (action.type in stateKeys) {
+          const key = [stateKeys[action.type]];
+          return (0, import_timm.setIn)(state, [key], { ...action.payload });
+        }
+        return state;
+      };
+    }
+  });
+
+  // packages/systems/ix2/engine/reducers/IX2SessionReducer.ts
+  var import_timm2, IX2_SESSION_INITIALIZED2, IX2_SESSION_STARTED2, IX2_TEST_FRAME_RENDERED2, IX2_SESSION_STOPPED2, IX2_EVENT_LISTENER_ADDED2, IX2_EVENT_STATE_CHANGED2, IX2_ANIMATION_FRAME_CHANGED2, IX2_ACTION_LIST_PLAYBACK_CHANGED2, IX2_VIEWPORT_WIDTH_CHANGED2, IX2_MEDIA_QUERIES_DEFINED2, initialState2, TEST_FRAME_STEPS_SIZE, ixSession;
+  var init_IX2SessionReducer = __esm({
+    "packages/systems/ix2/engine/reducers/IX2SessionReducer.ts"() {
+      "use strict";
+      init_shared_constants();
+      import_timm2 = __toESM(require_timm());
+      ({
+        IX2_SESSION_INITIALIZED: IX2_SESSION_INITIALIZED2,
+        IX2_SESSION_STARTED: IX2_SESSION_STARTED2,
+        IX2_TEST_FRAME_RENDERED: IX2_TEST_FRAME_RENDERED2,
+        IX2_SESSION_STOPPED: IX2_SESSION_STOPPED2,
+        IX2_EVENT_LISTENER_ADDED: IX2_EVENT_LISTENER_ADDED2,
+        IX2_EVENT_STATE_CHANGED: IX2_EVENT_STATE_CHANGED2,
+        IX2_ANIMATION_FRAME_CHANGED: IX2_ANIMATION_FRAME_CHANGED2,
+        IX2_ACTION_LIST_PLAYBACK_CHANGED: IX2_ACTION_LIST_PLAYBACK_CHANGED2,
+        IX2_VIEWPORT_WIDTH_CHANGED: IX2_VIEWPORT_WIDTH_CHANGED2,
+        IX2_MEDIA_QUERIES_DEFINED: IX2_MEDIA_QUERIES_DEFINED2
+      } = IX2EngineActionTypes_exports);
+      initialState2 = {
+        active: false,
+        tick: 0,
+        eventListeners: [],
+        eventState: {},
+        playbackState: {},
+        viewportWidth: 0,
+        mediaQueryKey: null,
+        hasBoundaryNodes: false,
+        hasDefinedMediaQueries: false,
+        reducedMotion: false
+      };
+      TEST_FRAME_STEPS_SIZE = 20;
+      ixSession = (state = initialState2, action) => {
+        switch (action.type) {
+          case IX2_SESSION_INITIALIZED2: {
+            const { hasBoundaryNodes, reducedMotion } = action.payload;
+            return (0, import_timm2.merge)(state, {
+              hasBoundaryNodes,
+              reducedMotion
+            });
+          }
+          case IX2_SESSION_STARTED2: {
+            return (0, import_timm2.set)(state, "active", true);
+          }
+          case IX2_TEST_FRAME_RENDERED2: {
+            const {
+              payload: { step = TEST_FRAME_STEPS_SIZE }
+            } = action;
+            return (0, import_timm2.set)(state, "tick", state.tick + step);
+          }
+          case IX2_SESSION_STOPPED2: {
+            return initialState2;
+          }
+          case IX2_ANIMATION_FRAME_CHANGED2: {
+            const {
+              payload: { now }
+            } = action;
+            return (0, import_timm2.set)(state, "tick", now);
+          }
+          case IX2_EVENT_LISTENER_ADDED2: {
+            const eventListeners = (0, import_timm2.addLast)(state.eventListeners, action.payload);
+            return (0, import_timm2.set)(state, "eventListeners", eventListeners);
+          }
+          case IX2_EVENT_STATE_CHANGED2: {
+            const { stateKey, newState } = action.payload;
+            return (0, import_timm2.setIn)(state, ["eventState", stateKey], newState);
+          }
+          case IX2_ACTION_LIST_PLAYBACK_CHANGED2: {
+            const { actionListId, isPlaying } = action.payload;
+            return (0, import_timm2.setIn)(state, ["playbackState", actionListId], isPlaying);
+          }
+          case IX2_VIEWPORT_WIDTH_CHANGED2: {
+            const { width, mediaQueries } = action.payload;
+            const mediaQueryCount = mediaQueries.length;
+            let mediaQueryKey = null;
+            for (let i = 0; i < mediaQueryCount; i++) {
+              const { key, min, max } = mediaQueries[i];
+              if (width >= min && width <= max) {
+                mediaQueryKey = key;
+                break;
+              }
+            }
+            return (0, import_timm2.merge)(state, {
+              viewportWidth: width,
+              mediaQueryKey
+            });
+          }
+          case IX2_MEDIA_QUERIES_DEFINED2: {
+            return (0, import_timm2.set)(state, "hasDefinedMediaQueries", true);
+          }
+          default: {
+            return state;
+          }
+        }
+      };
+    }
+  });
+
+  // node_modules/lodash/_listCacheClear.js
+  var require_listCacheClear = __commonJS({
+    "node_modules/lodash/_listCacheClear.js"(exports, module2) {
+      function listCacheClear() {
+        this.__data__ = [];
+        this.size = 0;
+      }
+      module2.exports = listCacheClear;
+    }
+  });
+
+  // node_modules/lodash/eq.js
+  var require_eq = __commonJS({
+    "node_modules/lodash/eq.js"(exports, module2) {
+      function eq(value, other) {
+        return value === other || value !== value && other !== other;
+      }
+      module2.exports = eq;
+    }
+  });
+
+  // node_modules/lodash/_assocIndexOf.js
+  var require_assocIndexOf = __commonJS({
+    "node_modules/lodash/_assocIndexOf.js"(exports, module2) {
+      var eq = require_eq();
+      function assocIndexOf(array, key) {
+        var length = array.length;
+        while (length--) {
+          if (eq(array[length][0], key)) {
+            return length;
+          }
+        }
+        return -1;
+      }
+      module2.exports = assocIndexOf;
+    }
+  });
+
+  // node_modules/lodash/_listCacheDelete.js
+  var require_listCacheDelete = __commonJS({
+    "node_modules/lodash/_listCacheDelete.js"(exports, module2) {
+      var assocIndexOf = require_assocIndexOf();
+      var arrayProto = Array.prototype;
+      var splice = arrayProto.splice;
+      function listCacheDelete(key) {
+        var data = this.__data__, index = assocIndexOf(data, key);
+        if (index < 0) {
+          return false;
+        }
+        var lastIndex = data.length - 1;
+        if (index == lastIndex) {
+          data.pop();
+        } else {
+          splice.call(data, index, 1);
+        }
+        --this.size;
+        return true;
+      }
+      module2.exports = listCacheDelete;
+    }
+  });
+
+  // node_modules/lodash/_listCacheGet.js
+  var require_listCacheGet = __commonJS({
+    "node_modules/lodash/_listCacheGet.js"(exports, module2) {
+      var assocIndexOf = require_assocIndexOf();
+      function listCacheGet(key) {
+        var data = this.__data__, index = assocIndexOf(data, key);
+        return index < 0 ? void 0 : data[index][1];
+      }
+      module2.exports = listCacheGet;
+    }
+  });
+
+  // node_modules/lodash/_listCacheHas.js
+  var require_listCacheHas = __commonJS({
+    "node_modules/lodash/_listCacheHas.js"(exports, module2) {
+      var assocIndexOf = require_assocIndexOf();
+      function listCacheHas(key) {
+        return assocIndexOf(this.__data__, key) > -1;
+      }
+      module2.exports = listCacheHas;
+    }
+  });
+
+  // node_modules/lodash/_listCacheSet.js
+  var require_listCacheSet = __commonJS({
+    "node_modules/lodash/_listCacheSet.js"(exports, module2) {
+      var assocIndexOf = require_assocIndexOf();
+      function listCacheSet(key, value) {
+        var data = this.__data__, index = assocIndexOf(data, key);
+        if (index < 0) {
+          ++this.size;
+          data.push([key, value]);
+        } else {
+          data[index][1] = value;
+        }
+        return this;
+      }
+      module2.exports = listCacheSet;
+    }
+  });
+
+  // node_modules/lodash/_ListCache.js
+  var require_ListCache = __commonJS({
+    "node_modules/lodash/_ListCache.js"(exports, module2) {
+      var listCacheClear = require_listCacheClear();
+      var listCacheDelete = require_listCacheDelete();
+      var listCacheGet = require_listCacheGet();
+      var listCacheHas = require_listCacheHas();
+      var listCacheSet = require_listCacheSet();
+      function ListCache(entries) {
+        var index = -1, length = entries == null ? 0 : entries.length;
+        this.clear();
+        while (++index < length) {
+          var entry = entries[index];
+          this.set(entry[0], entry[1]);
+        }
+      }
+      ListCache.prototype.clear = listCacheClear;
+      ListCache.prototype["delete"] = listCacheDelete;
+      ListCache.prototype.get = listCacheGet;
+      ListCache.prototype.has = listCacheHas;
+      ListCache.prototype.set = listCacheSet;
+      module2.exports = ListCache;
+    }
+  });
+
+  // node_modules/lodash/_stackClear.js
+  var require_stackClear = __commonJS({
+    "node_modules/lodash/_stackClear.js"(exports, module2) {
+      var ListCache = require_ListCache();
+      function stackClear() {
+        this.__data__ = new ListCache();
+        this.size = 0;
+      }
+      module2.exports = stackClear;
+    }
+  });
+
+  // node_modules/lodash/_stackDelete.js
+  var require_stackDelete = __commonJS({
+    "node_modules/lodash/_stackDelete.js"(exports, module2) {
+      function stackDelete(key) {
+        var data = this.__data__, result2 = data["delete"](key);
+        this.size = data.size;
+        return result2;
+      }
+      module2.exports = stackDelete;
+    }
+  });
+
+  // node_modules/lodash/_stackGet.js
+  var require_stackGet = __commonJS({
+    "node_modules/lodash/_stackGet.js"(exports, module2) {
+      function stackGet(key) {
+        return this.__data__.get(key);
+      }
+      module2.exports = stackGet;
+    }
+  });
+
+  // node_modules/lodash/_stackHas.js
+  var require_stackHas = __commonJS({
+    "node_modules/lodash/_stackHas.js"(exports, module2) {
+      function stackHas(key) {
+        return this.__data__.has(key);
+      }
+      module2.exports = stackHas;
+    }
+  });
+
+  // node_modules/lodash/isObject.js
+  var require_isObject = __commonJS({
+    "node_modules/lodash/isObject.js"(exports, module2) {
+      function isObject2(value) {
+        var type = typeof value;
+        return value != null && (type == "object" || type == "function");
+      }
+      module2.exports = isObject2;
+    }
+  });
+
+  // node_modules/lodash/isFunction.js
+  var require_isFunction = __commonJS({
+    "node_modules/lodash/isFunction.js"(exports, module2) {
+      var baseGetTag = require_baseGetTag();
+      var isObject2 = require_isObject();
+      var asyncTag = "[object AsyncFunction]";
+      var funcTag = "[object Function]";
+      var genTag = "[object GeneratorFunction]";
+      var proxyTag = "[object Proxy]";
+      function isFunction3(value) {
+        if (!isObject2(value)) {
+          return false;
+        }
+        var tag = baseGetTag(value);
+        return tag == funcTag || tag == genTag || tag == asyncTag || tag == proxyTag;
+      }
+      module2.exports = isFunction3;
+    }
+  });
+
+  // node_modules/lodash/_coreJsData.js
+  var require_coreJsData = __commonJS({
+    "node_modules/lodash/_coreJsData.js"(exports, module2) {
+      var root2 = require_root();
+      var coreJsData = root2["__core-js_shared__"];
+      module2.exports = coreJsData;
+    }
+  });
+
+  // node_modules/lodash/_isMasked.js
+  var require_isMasked = __commonJS({
+    "node_modules/lodash/_isMasked.js"(exports, module2) {
+      var coreJsData = require_coreJsData();
+      var maskSrcKey = function() {
+        var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || "");
+        return uid ? "Symbol(src)_1." + uid : "";
+      }();
+      function isMasked(func) {
+        return !!maskSrcKey && maskSrcKey in func;
+      }
+      module2.exports = isMasked;
+    }
+  });
+
+  // node_modules/lodash/_toSource.js
+  var require_toSource = __commonJS({
+    "node_modules/lodash/_toSource.js"(exports, module2) {
+      var funcProto = Function.prototype;
+      var funcToString = funcProto.toString;
+      function toSource(func) {
+        if (func != null) {
+          try {
+            return funcToString.call(func);
+          } catch (e) {
+          }
+          try {
+            return func + "";
+          } catch (e) {
+          }
+        }
+        return "";
+      }
+      module2.exports = toSource;
+    }
+  });
+
+  // node_modules/lodash/_baseIsNative.js
+  var require_baseIsNative = __commonJS({
+    "node_modules/lodash/_baseIsNative.js"(exports, module2) {
+      var isFunction3 = require_isFunction();
+      var isMasked = require_isMasked();
+      var isObject2 = require_isObject();
+      var toSource = require_toSource();
+      var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+      var reIsHostCtor = /^\[object .+?Constructor\]$/;
+      var funcProto = Function.prototype;
+      var objectProto = Object.prototype;
+      var funcToString = funcProto.toString;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      var reIsNative = RegExp(
+        "^" + funcToString.call(hasOwnProperty9).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$"
+      );
+      function baseIsNative(value) {
+        if (!isObject2(value) || isMasked(value)) {
+          return false;
+        }
+        var pattern = isFunction3(value) ? reIsNative : reIsHostCtor;
+        return pattern.test(toSource(value));
+      }
+      module2.exports = baseIsNative;
+    }
+  });
+
+  // node_modules/lodash/_getValue.js
+  var require_getValue = __commonJS({
+    "node_modules/lodash/_getValue.js"(exports, module2) {
+      function getValue(object, key) {
+        return object == null ? void 0 : object[key];
+      }
+      module2.exports = getValue;
+    }
+  });
+
+  // node_modules/lodash/_getNative.js
+  var require_getNative = __commonJS({
+    "node_modules/lodash/_getNative.js"(exports, module2) {
+      var baseIsNative = require_baseIsNative();
+      var getValue = require_getValue();
+      function getNative(object, key) {
+        var value = getValue(object, key);
+        return baseIsNative(value) ? value : void 0;
+      }
+      module2.exports = getNative;
+    }
+  });
+
+  // node_modules/lodash/_Map.js
+  var require_Map = __commonJS({
+    "node_modules/lodash/_Map.js"(exports, module2) {
+      var getNative = require_getNative();
+      var root2 = require_root();
+      var Map2 = getNative(root2, "Map");
+      module2.exports = Map2;
+    }
+  });
+
+  // node_modules/lodash/_nativeCreate.js
+  var require_nativeCreate = __commonJS({
+    "node_modules/lodash/_nativeCreate.js"(exports, module2) {
+      var getNative = require_getNative();
+      var nativeCreate = getNative(Object, "create");
+      module2.exports = nativeCreate;
+    }
+  });
+
+  // node_modules/lodash/_hashClear.js
+  var require_hashClear = __commonJS({
+    "node_modules/lodash/_hashClear.js"(exports, module2) {
+      var nativeCreate = require_nativeCreate();
+      function hashClear() {
+        this.__data__ = nativeCreate ? nativeCreate(null) : {};
+        this.size = 0;
+      }
+      module2.exports = hashClear;
+    }
+  });
+
+  // node_modules/lodash/_hashDelete.js
+  var require_hashDelete = __commonJS({
+    "node_modules/lodash/_hashDelete.js"(exports, module2) {
+      function hashDelete(key) {
+        var result2 = this.has(key) && delete this.__data__[key];
+        this.size -= result2 ? 1 : 0;
+        return result2;
+      }
+      module2.exports = hashDelete;
+    }
+  });
+
+  // node_modules/lodash/_hashGet.js
+  var require_hashGet = __commonJS({
+    "node_modules/lodash/_hashGet.js"(exports, module2) {
+      var nativeCreate = require_nativeCreate();
+      var HASH_UNDEFINED = "__lodash_hash_undefined__";
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function hashGet(key) {
+        var data = this.__data__;
+        if (nativeCreate) {
+          var result2 = data[key];
+          return result2 === HASH_UNDEFINED ? void 0 : result2;
+        }
+        return hasOwnProperty9.call(data, key) ? data[key] : void 0;
+      }
+      module2.exports = hashGet;
+    }
+  });
+
+  // node_modules/lodash/_hashHas.js
+  var require_hashHas = __commonJS({
+    "node_modules/lodash/_hashHas.js"(exports, module2) {
+      var nativeCreate = require_nativeCreate();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function hashHas(key) {
+        var data = this.__data__;
+        return nativeCreate ? data[key] !== void 0 : hasOwnProperty9.call(data, key);
+      }
+      module2.exports = hashHas;
+    }
+  });
+
+  // node_modules/lodash/_hashSet.js
+  var require_hashSet = __commonJS({
+    "node_modules/lodash/_hashSet.js"(exports, module2) {
+      var nativeCreate = require_nativeCreate();
+      var HASH_UNDEFINED = "__lodash_hash_undefined__";
+      function hashSet(key, value) {
+        var data = this.__data__;
+        this.size += this.has(key) ? 0 : 1;
+        data[key] = nativeCreate && value === void 0 ? HASH_UNDEFINED : value;
+        return this;
+      }
+      module2.exports = hashSet;
+    }
+  });
+
+  // node_modules/lodash/_Hash.js
+  var require_Hash = __commonJS({
+    "node_modules/lodash/_Hash.js"(exports, module2) {
+      var hashClear = require_hashClear();
+      var hashDelete = require_hashDelete();
+      var hashGet = require_hashGet();
+      var hashHas = require_hashHas();
+      var hashSet = require_hashSet();
+      function Hash(entries) {
+        var index = -1, length = entries == null ? 0 : entries.length;
+        this.clear();
+        while (++index < length) {
+          var entry = entries[index];
+          this.set(entry[0], entry[1]);
+        }
+      }
+      Hash.prototype.clear = hashClear;
+      Hash.prototype["delete"] = hashDelete;
+      Hash.prototype.get = hashGet;
+      Hash.prototype.has = hashHas;
+      Hash.prototype.set = hashSet;
+      module2.exports = Hash;
+    }
+  });
+
+  // node_modules/lodash/_mapCacheClear.js
+  var require_mapCacheClear = __commonJS({
+    "node_modules/lodash/_mapCacheClear.js"(exports, module2) {
+      var Hash = require_Hash();
+      var ListCache = require_ListCache();
+      var Map2 = require_Map();
+      function mapCacheClear() {
+        this.size = 0;
+        this.__data__ = {
+          "hash": new Hash(),
+          "map": new (Map2 || ListCache)(),
+          "string": new Hash()
+        };
+      }
+      module2.exports = mapCacheClear;
+    }
+  });
+
+  // node_modules/lodash/_isKeyable.js
+  var require_isKeyable = __commonJS({
+    "node_modules/lodash/_isKeyable.js"(exports, module2) {
+      function isKeyable(value) {
+        var type = typeof value;
+        return type == "string" || type == "number" || type == "symbol" || type == "boolean" ? value !== "__proto__" : value === null;
+      }
+      module2.exports = isKeyable;
+    }
+  });
+
+  // node_modules/lodash/_getMapData.js
+  var require_getMapData = __commonJS({
+    "node_modules/lodash/_getMapData.js"(exports, module2) {
+      var isKeyable = require_isKeyable();
+      function getMapData(map, key) {
+        var data = map.__data__;
+        return isKeyable(key) ? data[typeof key == "string" ? "string" : "hash"] : data.map;
+      }
+      module2.exports = getMapData;
+    }
+  });
+
+  // node_modules/lodash/_mapCacheDelete.js
+  var require_mapCacheDelete = __commonJS({
+    "node_modules/lodash/_mapCacheDelete.js"(exports, module2) {
+      var getMapData = require_getMapData();
+      function mapCacheDelete(key) {
+        var result2 = getMapData(this, key)["delete"](key);
+        this.size -= result2 ? 1 : 0;
+        return result2;
+      }
+      module2.exports = mapCacheDelete;
+    }
+  });
+
+  // node_modules/lodash/_mapCacheGet.js
+  var require_mapCacheGet = __commonJS({
+    "node_modules/lodash/_mapCacheGet.js"(exports, module2) {
+      var getMapData = require_getMapData();
+      function mapCacheGet(key) {
+        return getMapData(this, key).get(key);
+      }
+      module2.exports = mapCacheGet;
+    }
+  });
+
+  // node_modules/lodash/_mapCacheHas.js
+  var require_mapCacheHas = __commonJS({
+    "node_modules/lodash/_mapCacheHas.js"(exports, module2) {
+      var getMapData = require_getMapData();
+      function mapCacheHas(key) {
+        return getMapData(this, key).has(key);
+      }
+      module2.exports = mapCacheHas;
+    }
+  });
+
+  // node_modules/lodash/_mapCacheSet.js
+  var require_mapCacheSet = __commonJS({
+    "node_modules/lodash/_mapCacheSet.js"(exports, module2) {
+      var getMapData = require_getMapData();
+      function mapCacheSet(key, value) {
+        var data = getMapData(this, key), size2 = data.size;
+        data.set(key, value);
+        this.size += data.size == size2 ? 0 : 1;
+        return this;
+      }
+      module2.exports = mapCacheSet;
+    }
+  });
+
+  // node_modules/lodash/_MapCache.js
+  var require_MapCache = __commonJS({
+    "node_modules/lodash/_MapCache.js"(exports, module2) {
+      var mapCacheClear = require_mapCacheClear();
+      var mapCacheDelete = require_mapCacheDelete();
+      var mapCacheGet = require_mapCacheGet();
+      var mapCacheHas = require_mapCacheHas();
+      var mapCacheSet = require_mapCacheSet();
+      function MapCache(entries) {
+        var index = -1, length = entries == null ? 0 : entries.length;
+        this.clear();
+        while (++index < length) {
+          var entry = entries[index];
+          this.set(entry[0], entry[1]);
+        }
+      }
+      MapCache.prototype.clear = mapCacheClear;
+      MapCache.prototype["delete"] = mapCacheDelete;
+      MapCache.prototype.get = mapCacheGet;
+      MapCache.prototype.has = mapCacheHas;
+      MapCache.prototype.set = mapCacheSet;
+      module2.exports = MapCache;
+    }
+  });
+
+  // node_modules/lodash/_stackSet.js
+  var require_stackSet = __commonJS({
+    "node_modules/lodash/_stackSet.js"(exports, module2) {
+      var ListCache = require_ListCache();
+      var Map2 = require_Map();
+      var MapCache = require_MapCache();
+      var LARGE_ARRAY_SIZE = 200;
+      function stackSet(key, value) {
+        var data = this.__data__;
+        if (data instanceof ListCache) {
+          var pairs = data.__data__;
+          if (!Map2 || pairs.length < LARGE_ARRAY_SIZE - 1) {
+            pairs.push([key, value]);
+            this.size = ++data.size;
+            return this;
+          }
+          data = this.__data__ = new MapCache(pairs);
+        }
+        data.set(key, value);
+        this.size = data.size;
+        return this;
+      }
+      module2.exports = stackSet;
+    }
+  });
+
+  // node_modules/lodash/_Stack.js
+  var require_Stack = __commonJS({
+    "node_modules/lodash/_Stack.js"(exports, module2) {
+      var ListCache = require_ListCache();
+      var stackClear = require_stackClear();
+      var stackDelete = require_stackDelete();
+      var stackGet = require_stackGet();
+      var stackHas = require_stackHas();
+      var stackSet = require_stackSet();
+      function Stack2(entries) {
+        var data = this.__data__ = new ListCache(entries);
+        this.size = data.size;
+      }
+      Stack2.prototype.clear = stackClear;
+      Stack2.prototype["delete"] = stackDelete;
+      Stack2.prototype.get = stackGet;
+      Stack2.prototype.has = stackHas;
+      Stack2.prototype.set = stackSet;
+      module2.exports = Stack2;
+    }
+  });
+
+  // node_modules/lodash/_setCacheAdd.js
+  var require_setCacheAdd = __commonJS({
+    "node_modules/lodash/_setCacheAdd.js"(exports, module2) {
+      var HASH_UNDEFINED = "__lodash_hash_undefined__";
+      function setCacheAdd(value) {
+        this.__data__.set(value, HASH_UNDEFINED);
+        return this;
+      }
+      module2.exports = setCacheAdd;
+    }
+  });
+
+  // node_modules/lodash/_setCacheHas.js
+  var require_setCacheHas = __commonJS({
+    "node_modules/lodash/_setCacheHas.js"(exports, module2) {
+      function setCacheHas(value) {
+        return this.__data__.has(value);
+      }
+      module2.exports = setCacheHas;
+    }
+  });
+
+  // node_modules/lodash/_SetCache.js
+  var require_SetCache = __commonJS({
+    "node_modules/lodash/_SetCache.js"(exports, module2) {
+      var MapCache = require_MapCache();
+      var setCacheAdd = require_setCacheAdd();
+      var setCacheHas = require_setCacheHas();
+      function SetCache(values2) {
+        var index = -1, length = values2 == null ? 0 : values2.length;
+        this.__data__ = new MapCache();
+        while (++index < length) {
+          this.add(values2[index]);
+        }
+      }
+      SetCache.prototype.add = SetCache.prototype.push = setCacheAdd;
+      SetCache.prototype.has = setCacheHas;
+      module2.exports = SetCache;
+    }
+  });
+
+  // node_modules/lodash/_arraySome.js
+  var require_arraySome = __commonJS({
+    "node_modules/lodash/_arraySome.js"(exports, module2) {
+      function arraySome(array, predicate) {
+        var index = -1, length = array == null ? 0 : array.length;
+        while (++index < length) {
+          if (predicate(array[index], index, array)) {
+            return true;
+          }
+        }
+        return false;
+      }
+      module2.exports = arraySome;
+    }
+  });
+
+  // node_modules/lodash/_cacheHas.js
+  var require_cacheHas = __commonJS({
+    "node_modules/lodash/_cacheHas.js"(exports, module2) {
+      function cacheHas(cache, key) {
+        return cache.has(key);
+      }
+      module2.exports = cacheHas;
+    }
+  });
+
+  // node_modules/lodash/_equalArrays.js
+  var require_equalArrays = __commonJS({
+    "node_modules/lodash/_equalArrays.js"(exports, module2) {
+      var SetCache = require_SetCache();
+      var arraySome = require_arraySome();
+      var cacheHas = require_cacheHas();
+      var COMPARE_PARTIAL_FLAG = 1;
+      var COMPARE_UNORDERED_FLAG = 2;
+      function equalArrays(array, other, bitmask, customizer, equalFunc, stack) {
+        var isPartial = bitmask & COMPARE_PARTIAL_FLAG, arrLength = array.length, othLength = other.length;
+        if (arrLength != othLength && !(isPartial && othLength > arrLength)) {
+          return false;
+        }
+        var arrStacked = stack.get(array);
+        var othStacked = stack.get(other);
+        if (arrStacked && othStacked) {
+          return arrStacked == other && othStacked == array;
+        }
+        var index = -1, result2 = true, seen = bitmask & COMPARE_UNORDERED_FLAG ? new SetCache() : void 0;
+        stack.set(array, other);
+        stack.set(other, array);
+        while (++index < arrLength) {
+          var arrValue = array[index], othValue = other[index];
+          if (customizer) {
+            var compared = isPartial ? customizer(othValue, arrValue, index, other, array, stack) : customizer(arrValue, othValue, index, array, other, stack);
+          }
+          if (compared !== void 0) {
+            if (compared) {
+              continue;
+            }
+            result2 = false;
+            break;
+          }
+          if (seen) {
+            if (!arraySome(other, function(othValue2, othIndex) {
+              if (!cacheHas(seen, othIndex) && (arrValue === othValue2 || equalFunc(arrValue, othValue2, bitmask, customizer, stack))) {
+                return seen.push(othIndex);
+              }
+            })) {
+              result2 = false;
+              break;
+            }
+          } else if (!(arrValue === othValue || equalFunc(arrValue, othValue, bitmask, customizer, stack))) {
+            result2 = false;
+            break;
+          }
+        }
+        stack["delete"](array);
+        stack["delete"](other);
+        return result2;
+      }
+      module2.exports = equalArrays;
+    }
+  });
+
+  // node_modules/lodash/_Uint8Array.js
+  var require_Uint8Array = __commonJS({
+    "node_modules/lodash/_Uint8Array.js"(exports, module2) {
+      var root2 = require_root();
+      var Uint8Array2 = root2.Uint8Array;
+      module2.exports = Uint8Array2;
+    }
+  });
+
+  // node_modules/lodash/_mapToArray.js
+  var require_mapToArray = __commonJS({
+    "node_modules/lodash/_mapToArray.js"(exports, module2) {
+      function mapToArray(map) {
+        var index = -1, result2 = Array(map.size);
+        map.forEach(function(value, key) {
+          result2[++index] = [key, value];
+        });
+        return result2;
+      }
+      module2.exports = mapToArray;
+    }
+  });
+
+  // node_modules/lodash/_setToArray.js
+  var require_setToArray = __commonJS({
+    "node_modules/lodash/_setToArray.js"(exports, module2) {
+      function setToArray(set3) {
+        var index = -1, result2 = Array(set3.size);
+        set3.forEach(function(value) {
+          result2[++index] = value;
+        });
+        return result2;
+      }
+      module2.exports = setToArray;
+    }
+  });
+
+  // node_modules/lodash/_equalByTag.js
+  var require_equalByTag = __commonJS({
+    "node_modules/lodash/_equalByTag.js"(exports, module2) {
+      var Symbol2 = require_Symbol();
+      var Uint8Array2 = require_Uint8Array();
+      var eq = require_eq();
+      var equalArrays = require_equalArrays();
+      var mapToArray = require_mapToArray();
+      var setToArray = require_setToArray();
+      var COMPARE_PARTIAL_FLAG = 1;
+      var COMPARE_UNORDERED_FLAG = 2;
+      var boolTag = "[object Boolean]";
+      var dateTag = "[object Date]";
+      var errorTag = "[object Error]";
+      var mapTag = "[object Map]";
+      var numberTag = "[object Number]";
+      var regexpTag = "[object RegExp]";
+      var setTag = "[object Set]";
+      var stringTag = "[object String]";
+      var symbolTag = "[object Symbol]";
+      var arrayBufferTag = "[object ArrayBuffer]";
+      var dataViewTag = "[object DataView]";
+      var symbolProto = Symbol2 ? Symbol2.prototype : void 0;
+      var symbolValueOf = symbolProto ? symbolProto.valueOf : void 0;
+      function equalByTag(object, other, tag, bitmask, customizer, equalFunc, stack) {
+        switch (tag) {
+          case dataViewTag:
+            if (object.byteLength != other.byteLength || object.byteOffset != other.byteOffset) {
+              return false;
+            }
+            object = object.buffer;
+            other = other.buffer;
+          case arrayBufferTag:
+            if (object.byteLength != other.byteLength || !equalFunc(new Uint8Array2(object), new Uint8Array2(other))) {
+              return false;
+            }
+            return true;
+          case boolTag:
+          case dateTag:
+          case numberTag:
+            return eq(+object, +other);
+          case errorTag:
+            return object.name == other.name && object.message == other.message;
+          case regexpTag:
+          case stringTag:
+            return object == other + "";
+          case mapTag:
+            var convert = mapToArray;
+          case setTag:
+            var isPartial = bitmask & COMPARE_PARTIAL_FLAG;
+            convert || (convert = setToArray);
+            if (object.size != other.size && !isPartial) {
+              return false;
+            }
+            var stacked = stack.get(object);
+            if (stacked) {
+              return stacked == other;
+            }
+            bitmask |= COMPARE_UNORDERED_FLAG;
+            stack.set(object, other);
+            var result2 = equalArrays(convert(object), convert(other), bitmask, customizer, equalFunc, stack);
+            stack["delete"](object);
+            return result2;
+          case symbolTag:
+            if (symbolValueOf) {
+              return symbolValueOf.call(object) == symbolValueOf.call(other);
+            }
+        }
+        return false;
+      }
+      module2.exports = equalByTag;
+    }
+  });
+
+  // node_modules/lodash/_arrayPush.js
+  var require_arrayPush = __commonJS({
+    "node_modules/lodash/_arrayPush.js"(exports, module2) {
+      function arrayPush(array, values2) {
+        var index = -1, length = values2.length, offset = array.length;
+        while (++index < length) {
+          array[offset + index] = values2[index];
+        }
+        return array;
+      }
+      module2.exports = arrayPush;
+    }
+  });
+
+  // node_modules/lodash/isArray.js
+  var require_isArray = __commonJS({
+    "node_modules/lodash/isArray.js"(exports, module2) {
+      var isArray2 = Array.isArray;
+      module2.exports = isArray2;
+    }
+  });
+
+  // node_modules/lodash/_baseGetAllKeys.js
+  var require_baseGetAllKeys = __commonJS({
+    "node_modules/lodash/_baseGetAllKeys.js"(exports, module2) {
+      var arrayPush = require_arrayPush();
+      var isArray2 = require_isArray();
+      function baseGetAllKeys(object, keysFunc, symbolsFunc) {
+        var result2 = keysFunc(object);
+        return isArray2(object) ? result2 : arrayPush(result2, symbolsFunc(object));
+      }
+      module2.exports = baseGetAllKeys;
+    }
+  });
+
+  // node_modules/lodash/_arrayFilter.js
+  var require_arrayFilter = __commonJS({
+    "node_modules/lodash/_arrayFilter.js"(exports, module2) {
+      function arrayFilter(array, predicate) {
+        var index = -1, length = array == null ? 0 : array.length, resIndex = 0, result2 = [];
+        while (++index < length) {
+          var value = array[index];
+          if (predicate(value, index, array)) {
+            result2[resIndex++] = value;
+          }
+        }
+        return result2;
+      }
+      module2.exports = arrayFilter;
+    }
+  });
+
+  // node_modules/lodash/stubArray.js
+  var require_stubArray = __commonJS({
+    "node_modules/lodash/stubArray.js"(exports, module2) {
+      function stubArray() {
+        return [];
+      }
+      module2.exports = stubArray;
+    }
+  });
+
+  // node_modules/lodash/_getSymbols.js
+  var require_getSymbols = __commonJS({
+    "node_modules/lodash/_getSymbols.js"(exports, module2) {
+      var arrayFilter = require_arrayFilter();
+      var stubArray = require_stubArray();
+      var objectProto = Object.prototype;
+      var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+      var nativeGetSymbols = Object.getOwnPropertySymbols;
+      var getSymbols = !nativeGetSymbols ? stubArray : function(object) {
+        if (object == null) {
+          return [];
+        }
+        object = Object(object);
+        return arrayFilter(nativeGetSymbols(object), function(symbol) {
+          return propertyIsEnumerable.call(object, symbol);
+        });
+      };
+      module2.exports = getSymbols;
+    }
+  });
+
+  // node_modules/lodash/_baseTimes.js
+  var require_baseTimes = __commonJS({
+    "node_modules/lodash/_baseTimes.js"(exports, module2) {
+      function baseTimes(n, iteratee) {
+        var index = -1, result2 = Array(n);
+        while (++index < n) {
+          result2[index] = iteratee(index);
+        }
+        return result2;
+      }
+      module2.exports = baseTimes;
+    }
+  });
+
+  // node_modules/lodash/_baseIsArguments.js
+  var require_baseIsArguments = __commonJS({
+    "node_modules/lodash/_baseIsArguments.js"(exports, module2) {
+      var baseGetTag = require_baseGetTag();
+      var isObjectLike2 = require_isObjectLike();
+      var argsTag = "[object Arguments]";
+      function baseIsArguments(value) {
+        return isObjectLike2(value) && baseGetTag(value) == argsTag;
+      }
+      module2.exports = baseIsArguments;
+    }
+  });
+
+  // node_modules/lodash/isArguments.js
+  var require_isArguments = __commonJS({
+    "node_modules/lodash/isArguments.js"(exports, module2) {
+      var baseIsArguments = require_baseIsArguments();
+      var isObjectLike2 = require_isObjectLike();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+      var isArguments = baseIsArguments(function() {
+        return arguments;
+      }()) ? baseIsArguments : function(value) {
+        return isObjectLike2(value) && hasOwnProperty9.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
+      };
+      module2.exports = isArguments;
+    }
+  });
+
+  // node_modules/lodash/stubFalse.js
+  var require_stubFalse = __commonJS({
+    "node_modules/lodash/stubFalse.js"(exports, module2) {
+      function stubFalse() {
+        return false;
+      }
+      module2.exports = stubFalse;
+    }
+  });
+
+  // node_modules/lodash/isBuffer.js
+  var require_isBuffer = __commonJS({
+    "node_modules/lodash/isBuffer.js"(exports, module2) {
+      var root2 = require_root();
+      var stubFalse = require_stubFalse();
+      var freeExports = typeof exports == "object" && exports && !exports.nodeType && exports;
+      var freeModule = freeExports && typeof module2 == "object" && module2 && !module2.nodeType && module2;
+      var moduleExports = freeModule && freeModule.exports === freeExports;
+      var Buffer2 = moduleExports ? root2.Buffer : void 0;
+      var nativeIsBuffer = Buffer2 ? Buffer2.isBuffer : void 0;
+      var isBuffer = nativeIsBuffer || stubFalse;
+      module2.exports = isBuffer;
+    }
+  });
+
+  // node_modules/lodash/_isIndex.js
+  var require_isIndex = __commonJS({
+    "node_modules/lodash/_isIndex.js"(exports, module2) {
+      var MAX_SAFE_INTEGER = 9007199254740991;
+      var reIsUint = /^(?:0|[1-9]\d*)$/;
+      function isIndex(value, length) {
+        var type = typeof value;
+        length = length == null ? MAX_SAFE_INTEGER : length;
+        return !!length && (type == "number" || type != "symbol" && reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
+      }
+      module2.exports = isIndex;
+    }
+  });
+
+  // node_modules/lodash/isLength.js
+  var require_isLength = __commonJS({
+    "node_modules/lodash/isLength.js"(exports, module2) {
+      var MAX_SAFE_INTEGER = 9007199254740991;
+      function isLength(value) {
+        return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+      }
+      module2.exports = isLength;
+    }
+  });
+
+  // node_modules/lodash/_baseIsTypedArray.js
+  var require_baseIsTypedArray = __commonJS({
+    "node_modules/lodash/_baseIsTypedArray.js"(exports, module2) {
+      var baseGetTag = require_baseGetTag();
+      var isLength = require_isLength();
+      var isObjectLike2 = require_isObjectLike();
+      var argsTag = "[object Arguments]";
+      var arrayTag = "[object Array]";
+      var boolTag = "[object Boolean]";
+      var dateTag = "[object Date]";
+      var errorTag = "[object Error]";
+      var funcTag = "[object Function]";
+      var mapTag = "[object Map]";
+      var numberTag = "[object Number]";
+      var objectTag = "[object Object]";
+      var regexpTag = "[object RegExp]";
+      var setTag = "[object Set]";
+      var stringTag = "[object String]";
+      var weakMapTag = "[object WeakMap]";
+      var arrayBufferTag = "[object ArrayBuffer]";
+      var dataViewTag = "[object DataView]";
+      var float32Tag = "[object Float32Array]";
+      var float64Tag = "[object Float64Array]";
+      var int8Tag = "[object Int8Array]";
+      var int16Tag = "[object Int16Array]";
+      var int32Tag = "[object Int32Array]";
+      var uint8Tag = "[object Uint8Array]";
+      var uint8ClampedTag = "[object Uint8ClampedArray]";
+      var uint16Tag = "[object Uint16Array]";
+      var uint32Tag = "[object Uint32Array]";
+      var typedArrayTags = {};
+      typedArrayTags[float32Tag] = typedArrayTags[float64Tag] = typedArrayTags[int8Tag] = typedArrayTags[int16Tag] = typedArrayTags[int32Tag] = typedArrayTags[uint8Tag] = typedArrayTags[uint8ClampedTag] = typedArrayTags[uint16Tag] = typedArrayTags[uint32Tag] = true;
+      typedArrayTags[argsTag] = typedArrayTags[arrayTag] = typedArrayTags[arrayBufferTag] = typedArrayTags[boolTag] = typedArrayTags[dataViewTag] = typedArrayTags[dateTag] = typedArrayTags[errorTag] = typedArrayTags[funcTag] = typedArrayTags[mapTag] = typedArrayTags[numberTag] = typedArrayTags[objectTag] = typedArrayTags[regexpTag] = typedArrayTags[setTag] = typedArrayTags[stringTag] = typedArrayTags[weakMapTag] = false;
+      function baseIsTypedArray(value) {
+        return isObjectLike2(value) && isLength(value.length) && !!typedArrayTags[baseGetTag(value)];
+      }
+      module2.exports = baseIsTypedArray;
+    }
+  });
+
+  // node_modules/lodash/_baseUnary.js
+  var require_baseUnary = __commonJS({
+    "node_modules/lodash/_baseUnary.js"(exports, module2) {
+      function baseUnary(func) {
+        return function(value) {
+          return func(value);
+        };
+      }
+      module2.exports = baseUnary;
+    }
+  });
+
+  // node_modules/lodash/_nodeUtil.js
+  var require_nodeUtil = __commonJS({
+    "node_modules/lodash/_nodeUtil.js"(exports, module2) {
+      var freeGlobal = require_freeGlobal();
+      var freeExports = typeof exports == "object" && exports && !exports.nodeType && exports;
+      var freeModule = freeExports && typeof module2 == "object" && module2 && !module2.nodeType && module2;
+      var moduleExports = freeModule && freeModule.exports === freeExports;
+      var freeProcess = moduleExports && freeGlobal.process;
+      var nodeUtil = function() {
+        try {
+          var types = freeModule && freeModule.require && freeModule.require("util").types;
+          if (types) {
+            return types;
+          }
+          return freeProcess && freeProcess.binding && freeProcess.binding("util");
+        } catch (e) {
+        }
+      }();
+      module2.exports = nodeUtil;
+    }
+  });
+
+  // node_modules/lodash/isTypedArray.js
+  var require_isTypedArray = __commonJS({
+    "node_modules/lodash/isTypedArray.js"(exports, module2) {
+      var baseIsTypedArray = require_baseIsTypedArray();
+      var baseUnary = require_baseUnary();
+      var nodeUtil = require_nodeUtil();
+      var nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
+      var isTypedArray = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedArray;
+      module2.exports = isTypedArray;
+    }
+  });
+
+  // node_modules/lodash/_arrayLikeKeys.js
+  var require_arrayLikeKeys = __commonJS({
+    "node_modules/lodash/_arrayLikeKeys.js"(exports, module2) {
+      var baseTimes = require_baseTimes();
+      var isArguments = require_isArguments();
+      var isArray2 = require_isArray();
+      var isBuffer = require_isBuffer();
+      var isIndex = require_isIndex();
+      var isTypedArray = require_isTypedArray();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function arrayLikeKeys(value, inherited) {
+        var isArr = isArray2(value), isArg = !isArr && isArguments(value), isBuff = !isArr && !isArg && isBuffer(value), isType = !isArr && !isArg && !isBuff && isTypedArray(value), skipIndexes = isArr || isArg || isBuff || isType, result2 = skipIndexes ? baseTimes(value.length, String) : [], length = result2.length;
+        for (var key in value) {
+          if ((inherited || hasOwnProperty9.call(value, key)) && !(skipIndexes && // Safari 9 has enumerable `arguments.length` in strict mode.
+          (key == "length" || // Node.js 0.10 has enumerable non-index properties on buffers.
+          isBuff && (key == "offset" || key == "parent") || // PhantomJS 2 has enumerable non-index properties on typed arrays.
+          isType && (key == "buffer" || key == "byteLength" || key == "byteOffset") || // Skip index properties.
+          isIndex(key, length)))) {
+            result2.push(key);
+          }
+        }
+        return result2;
+      }
+      module2.exports = arrayLikeKeys;
+    }
+  });
+
+  // node_modules/lodash/_isPrototype.js
+  var require_isPrototype = __commonJS({
+    "node_modules/lodash/_isPrototype.js"(exports, module2) {
+      var objectProto = Object.prototype;
+      function isPrototype(value) {
+        var Ctor = value && value.constructor, proto = typeof Ctor == "function" && Ctor.prototype || objectProto;
+        return value === proto;
+      }
+      module2.exports = isPrototype;
+    }
+  });
+
+  // node_modules/lodash/_nativeKeys.js
+  var require_nativeKeys = __commonJS({
+    "node_modules/lodash/_nativeKeys.js"(exports, module2) {
+      var overArg = require_overArg();
+      var nativeKeys = overArg(Object.keys, Object);
+      module2.exports = nativeKeys;
+    }
+  });
+
+  // node_modules/lodash/_baseKeys.js
+  var require_baseKeys = __commonJS({
+    "node_modules/lodash/_baseKeys.js"(exports, module2) {
+      var isPrototype = require_isPrototype();
+      var nativeKeys = require_nativeKeys();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function baseKeys(object) {
+        if (!isPrototype(object)) {
+          return nativeKeys(object);
+        }
+        var result2 = [];
+        for (var key in Object(object)) {
+          if (hasOwnProperty9.call(object, key) && key != "constructor") {
+            result2.push(key);
+          }
+        }
+        return result2;
+      }
+      module2.exports = baseKeys;
+    }
+  });
+
+  // node_modules/lodash/isArrayLike.js
+  var require_isArrayLike = __commonJS({
+    "node_modules/lodash/isArrayLike.js"(exports, module2) {
+      var isFunction3 = require_isFunction();
+      var isLength = require_isLength();
+      function isArrayLike(value) {
+        return value != null && isLength(value.length) && !isFunction3(value);
+      }
+      module2.exports = isArrayLike;
+    }
+  });
+
+  // node_modules/lodash/keys.js
+  var require_keys = __commonJS({
+    "node_modules/lodash/keys.js"(exports, module2) {
+      var arrayLikeKeys = require_arrayLikeKeys();
+      var baseKeys = require_baseKeys();
+      var isArrayLike = require_isArrayLike();
+      function keys(object) {
+        return isArrayLike(object) ? arrayLikeKeys(object) : baseKeys(object);
+      }
+      module2.exports = keys;
+    }
+  });
+
+  // node_modules/lodash/_getAllKeys.js
+  var require_getAllKeys = __commonJS({
+    "node_modules/lodash/_getAllKeys.js"(exports, module2) {
+      var baseGetAllKeys = require_baseGetAllKeys();
+      var getSymbols = require_getSymbols();
+      var keys = require_keys();
+      function getAllKeys(object) {
+        return baseGetAllKeys(object, keys, getSymbols);
+      }
+      module2.exports = getAllKeys;
+    }
+  });
+
+  // node_modules/lodash/_equalObjects.js
+  var require_equalObjects = __commonJS({
+    "node_modules/lodash/_equalObjects.js"(exports, module2) {
+      var getAllKeys = require_getAllKeys();
+      var COMPARE_PARTIAL_FLAG = 1;
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function equalObjects(object, other, bitmask, customizer, equalFunc, stack) {
+        var isPartial = bitmask & COMPARE_PARTIAL_FLAG, objProps = getAllKeys(object), objLength = objProps.length, othProps = getAllKeys(other), othLength = othProps.length;
+        if (objLength != othLength && !isPartial) {
+          return false;
+        }
+        var index = objLength;
+        while (index--) {
+          var key = objProps[index];
+          if (!(isPartial ? key in other : hasOwnProperty9.call(other, key))) {
+            return false;
+          }
+        }
+        var objStacked = stack.get(object);
+        var othStacked = stack.get(other);
+        if (objStacked && othStacked) {
+          return objStacked == other && othStacked == object;
+        }
+        var result2 = true;
+        stack.set(object, other);
+        stack.set(other, object);
+        var skipCtor = isPartial;
+        while (++index < objLength) {
+          key = objProps[index];
+          var objValue = object[key], othValue = other[key];
+          if (customizer) {
+            var compared = isPartial ? customizer(othValue, objValue, key, other, object, stack) : customizer(objValue, othValue, key, object, other, stack);
+          }
+          if (!(compared === void 0 ? objValue === othValue || equalFunc(objValue, othValue, bitmask, customizer, stack) : compared)) {
+            result2 = false;
+            break;
+          }
+          skipCtor || (skipCtor = key == "constructor");
+        }
+        if (result2 && !skipCtor) {
+          var objCtor = object.constructor, othCtor = other.constructor;
+          if (objCtor != othCtor && ("constructor" in object && "constructor" in other) && !(typeof objCtor == "function" && objCtor instanceof objCtor && typeof othCtor == "function" && othCtor instanceof othCtor)) {
+            result2 = false;
+          }
+        }
+        stack["delete"](object);
+        stack["delete"](other);
+        return result2;
+      }
+      module2.exports = equalObjects;
+    }
+  });
+
+  // node_modules/lodash/_DataView.js
+  var require_DataView = __commonJS({
+    "node_modules/lodash/_DataView.js"(exports, module2) {
+      var getNative = require_getNative();
+      var root2 = require_root();
+      var DataView = getNative(root2, "DataView");
+      module2.exports = DataView;
+    }
+  });
+
+  // node_modules/lodash/_Promise.js
+  var require_Promise = __commonJS({
+    "node_modules/lodash/_Promise.js"(exports, module2) {
+      var getNative = require_getNative();
+      var root2 = require_root();
+      var Promise3 = getNative(root2, "Promise");
+      module2.exports = Promise3;
+    }
+  });
+
+  // node_modules/lodash/_Set.js
+  var require_Set = __commonJS({
+    "node_modules/lodash/_Set.js"(exports, module2) {
+      var getNative = require_getNative();
+      var root2 = require_root();
+      var Set2 = getNative(root2, "Set");
+      module2.exports = Set2;
+    }
+  });
+
+  // node_modules/lodash/_WeakMap.js
+  var require_WeakMap = __commonJS({
+    "node_modules/lodash/_WeakMap.js"(exports, module2) {
+      var getNative = require_getNative();
+      var root2 = require_root();
+      var WeakMap2 = getNative(root2, "WeakMap");
+      module2.exports = WeakMap2;
+    }
+  });
+
+  // node_modules/lodash/_getTag.js
+  var require_getTag = __commonJS({
+    "node_modules/lodash/_getTag.js"(exports, module2) {
+      var DataView = require_DataView();
+      var Map2 = require_Map();
+      var Promise3 = require_Promise();
+      var Set2 = require_Set();
+      var WeakMap2 = require_WeakMap();
+      var baseGetTag = require_baseGetTag();
+      var toSource = require_toSource();
+      var mapTag = "[object Map]";
+      var objectTag = "[object Object]";
+      var promiseTag = "[object Promise]";
+      var setTag = "[object Set]";
+      var weakMapTag = "[object WeakMap]";
+      var dataViewTag = "[object DataView]";
+      var dataViewCtorString = toSource(DataView);
+      var mapCtorString = toSource(Map2);
+      var promiseCtorString = toSource(Promise3);
+      var setCtorString = toSource(Set2);
+      var weakMapCtorString = toSource(WeakMap2);
+      var getTag = baseGetTag;
+      if (DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag || Map2 && getTag(new Map2()) != mapTag || Promise3 && getTag(Promise3.resolve()) != promiseTag || Set2 && getTag(new Set2()) != setTag || WeakMap2 && getTag(new WeakMap2()) != weakMapTag) {
+        getTag = function(value) {
+          var result2 = baseGetTag(value), Ctor = result2 == objectTag ? value.constructor : void 0, ctorString = Ctor ? toSource(Ctor) : "";
+          if (ctorString) {
+            switch (ctorString) {
+              case dataViewCtorString:
+                return dataViewTag;
+              case mapCtorString:
+                return mapTag;
+              case promiseCtorString:
+                return promiseTag;
+              case setCtorString:
+                return setTag;
+              case weakMapCtorString:
+                return weakMapTag;
+            }
+          }
+          return result2;
+        };
+      }
+      module2.exports = getTag;
+    }
+  });
+
+  // node_modules/lodash/_baseIsEqualDeep.js
+  var require_baseIsEqualDeep = __commonJS({
+    "node_modules/lodash/_baseIsEqualDeep.js"(exports, module2) {
+      var Stack2 = require_Stack();
+      var equalArrays = require_equalArrays();
+      var equalByTag = require_equalByTag();
+      var equalObjects = require_equalObjects();
+      var getTag = require_getTag();
+      var isArray2 = require_isArray();
+      var isBuffer = require_isBuffer();
+      var isTypedArray = require_isTypedArray();
+      var COMPARE_PARTIAL_FLAG = 1;
+      var argsTag = "[object Arguments]";
+      var arrayTag = "[object Array]";
+      var objectTag = "[object Object]";
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function baseIsEqualDeep(object, other, bitmask, customizer, equalFunc, stack) {
+        var objIsArr = isArray2(object), othIsArr = isArray2(other), objTag = objIsArr ? arrayTag : getTag(object), othTag = othIsArr ? arrayTag : getTag(other);
+        objTag = objTag == argsTag ? objectTag : objTag;
+        othTag = othTag == argsTag ? objectTag : othTag;
+        var objIsObj = objTag == objectTag, othIsObj = othTag == objectTag, isSameTag = objTag == othTag;
+        if (isSameTag && isBuffer(object)) {
+          if (!isBuffer(other)) {
+            return false;
+          }
+          objIsArr = true;
+          objIsObj = false;
+        }
+        if (isSameTag && !objIsObj) {
+          stack || (stack = new Stack2());
+          return objIsArr || isTypedArray(object) ? equalArrays(object, other, bitmask, customizer, equalFunc, stack) : equalByTag(object, other, objTag, bitmask, customizer, equalFunc, stack);
+        }
+        if (!(bitmask & COMPARE_PARTIAL_FLAG)) {
+          var objIsWrapped = objIsObj && hasOwnProperty9.call(object, "__wrapped__"), othIsWrapped = othIsObj && hasOwnProperty9.call(other, "__wrapped__");
+          if (objIsWrapped || othIsWrapped) {
+            var objUnwrapped = objIsWrapped ? object.value() : object, othUnwrapped = othIsWrapped ? other.value() : other;
+            stack || (stack = new Stack2());
+            return equalFunc(objUnwrapped, othUnwrapped, bitmask, customizer, stack);
+          }
+        }
+        if (!isSameTag) {
+          return false;
+        }
+        stack || (stack = new Stack2());
+        return equalObjects(object, other, bitmask, customizer, equalFunc, stack);
+      }
+      module2.exports = baseIsEqualDeep;
+    }
+  });
+
+  // node_modules/lodash/_baseIsEqual.js
+  var require_baseIsEqual = __commonJS({
+    "node_modules/lodash/_baseIsEqual.js"(exports, module2) {
+      var baseIsEqualDeep = require_baseIsEqualDeep();
+      var isObjectLike2 = require_isObjectLike();
+      function baseIsEqual(value, other, bitmask, customizer, stack) {
+        if (value === other) {
+          return true;
+        }
+        if (value == null || other == null || !isObjectLike2(value) && !isObjectLike2(other)) {
+          return value !== value && other !== other;
+        }
+        return baseIsEqualDeep(value, other, bitmask, customizer, baseIsEqual, stack);
+      }
+      module2.exports = baseIsEqual;
+    }
+  });
+
+  // node_modules/lodash/_baseIsMatch.js
+  var require_baseIsMatch = __commonJS({
+    "node_modules/lodash/_baseIsMatch.js"(exports, module2) {
+      var Stack2 = require_Stack();
+      var baseIsEqual = require_baseIsEqual();
+      var COMPARE_PARTIAL_FLAG = 1;
+      var COMPARE_UNORDERED_FLAG = 2;
+      function baseIsMatch(object, source, matchData, customizer) {
+        var index = matchData.length, length = index, noCustomizer = !customizer;
+        if (object == null) {
+          return !length;
+        }
+        object = Object(object);
+        while (index--) {
+          var data = matchData[index];
+          if (noCustomizer && data[2] ? data[1] !== object[data[0]] : !(data[0] in object)) {
+            return false;
+          }
+        }
+        while (++index < length) {
+          data = matchData[index];
+          var key = data[0], objValue = object[key], srcValue = data[1];
+          if (noCustomizer && data[2]) {
+            if (objValue === void 0 && !(key in object)) {
+              return false;
+            }
+          } else {
+            var stack = new Stack2();
+            if (customizer) {
+              var result2 = customizer(objValue, srcValue, key, object, source, stack);
+            }
+            if (!(result2 === void 0 ? baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG, customizer, stack) : result2)) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+      module2.exports = baseIsMatch;
+    }
+  });
+
+  // node_modules/lodash/_isStrictComparable.js
+  var require_isStrictComparable = __commonJS({
+    "node_modules/lodash/_isStrictComparable.js"(exports, module2) {
+      var isObject2 = require_isObject();
+      function isStrictComparable(value) {
+        return value === value && !isObject2(value);
+      }
+      module2.exports = isStrictComparable;
+    }
+  });
+
+  // node_modules/lodash/_getMatchData.js
+  var require_getMatchData = __commonJS({
+    "node_modules/lodash/_getMatchData.js"(exports, module2) {
+      var isStrictComparable = require_isStrictComparable();
+      var keys = require_keys();
+      function getMatchData(object) {
+        var result2 = keys(object), length = result2.length;
+        while (length--) {
+          var key = result2[length], value = object[key];
+          result2[length] = [key, value, isStrictComparable(value)];
+        }
+        return result2;
+      }
+      module2.exports = getMatchData;
+    }
+  });
+
+  // node_modules/lodash/_matchesStrictComparable.js
+  var require_matchesStrictComparable = __commonJS({
+    "node_modules/lodash/_matchesStrictComparable.js"(exports, module2) {
+      function matchesStrictComparable(key, srcValue) {
+        return function(object) {
+          if (object == null) {
+            return false;
+          }
+          return object[key] === srcValue && (srcValue !== void 0 || key in Object(object));
+        };
+      }
+      module2.exports = matchesStrictComparable;
+    }
+  });
+
+  // node_modules/lodash/_baseMatches.js
+  var require_baseMatches = __commonJS({
+    "node_modules/lodash/_baseMatches.js"(exports, module2) {
+      var baseIsMatch = require_baseIsMatch();
+      var getMatchData = require_getMatchData();
+      var matchesStrictComparable = require_matchesStrictComparable();
+      function baseMatches(source) {
+        var matchData = getMatchData(source);
+        if (matchData.length == 1 && matchData[0][2]) {
+          return matchesStrictComparable(matchData[0][0], matchData[0][1]);
+        }
+        return function(object) {
+          return object === source || baseIsMatch(object, source, matchData);
+        };
+      }
+      module2.exports = baseMatches;
+    }
+  });
+
+  // node_modules/lodash/isSymbol.js
+  var require_isSymbol = __commonJS({
+    "node_modules/lodash/isSymbol.js"(exports, module2) {
+      var baseGetTag = require_baseGetTag();
+      var isObjectLike2 = require_isObjectLike();
+      var symbolTag = "[object Symbol]";
+      function isSymbol(value) {
+        return typeof value == "symbol" || isObjectLike2(value) && baseGetTag(value) == symbolTag;
+      }
+      module2.exports = isSymbol;
+    }
+  });
+
+  // node_modules/lodash/_isKey.js
+  var require_isKey = __commonJS({
+    "node_modules/lodash/_isKey.js"(exports, module2) {
+      var isArray2 = require_isArray();
+      var isSymbol = require_isSymbol();
+      var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/;
+      var reIsPlainProp = /^\w*$/;
+      function isKey(value, object) {
+        if (isArray2(value)) {
+          return false;
+        }
+        var type = typeof value;
+        if (type == "number" || type == "symbol" || type == "boolean" || value == null || isSymbol(value)) {
+          return true;
+        }
+        return reIsPlainProp.test(value) || !reIsDeepProp.test(value) || object != null && value in Object(object);
+      }
+      module2.exports = isKey;
+    }
+  });
+
+  // node_modules/lodash/memoize.js
+  var require_memoize = __commonJS({
+    "node_modules/lodash/memoize.js"(exports, module2) {
+      var MapCache = require_MapCache();
+      var FUNC_ERROR_TEXT = "Expected a function";
+      function memoize2(func, resolver) {
+        if (typeof func != "function" || resolver != null && typeof resolver != "function") {
+          throw new TypeError(FUNC_ERROR_TEXT);
+        }
+        var memoized = function() {
+          var args = arguments, key = resolver ? resolver.apply(this, args) : args[0], cache = memoized.cache;
+          if (cache.has(key)) {
+            return cache.get(key);
+          }
+          var result2 = func.apply(this, args);
+          memoized.cache = cache.set(key, result2) || cache;
+          return result2;
+        };
+        memoized.cache = new (memoize2.Cache || MapCache)();
+        return memoized;
+      }
+      memoize2.Cache = MapCache;
+      module2.exports = memoize2;
+    }
+  });
+
+  // node_modules/lodash/_memoizeCapped.js
+  var require_memoizeCapped = __commonJS({
+    "node_modules/lodash/_memoizeCapped.js"(exports, module2) {
+      var memoize2 = require_memoize();
+      var MAX_MEMOIZE_SIZE = 500;
+      function memoizeCapped(func) {
+        var result2 = memoize2(func, function(key) {
+          if (cache.size === MAX_MEMOIZE_SIZE) {
+            cache.clear();
+          }
+          return key;
+        });
+        var cache = result2.cache;
+        return result2;
+      }
+      module2.exports = memoizeCapped;
+    }
+  });
+
+  // node_modules/lodash/_stringToPath.js
+  var require_stringToPath = __commonJS({
+    "node_modules/lodash/_stringToPath.js"(exports, module2) {
+      var memoizeCapped = require_memoizeCapped();
+      var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
+      var reEscapeChar = /\\(\\)?/g;
+      var stringToPath = memoizeCapped(function(string) {
+        var result2 = [];
+        if (string.charCodeAt(0) === 46) {
+          result2.push("");
+        }
+        string.replace(rePropName, function(match, number, quote, subString) {
+          result2.push(quote ? subString.replace(reEscapeChar, "$1") : number || match);
+        });
+        return result2;
+      });
+      module2.exports = stringToPath;
+    }
+  });
+
+  // node_modules/lodash/_arrayMap.js
+  var require_arrayMap = __commonJS({
+    "node_modules/lodash/_arrayMap.js"(exports, module2) {
+      function arrayMap(array, iteratee) {
+        var index = -1, length = array == null ? 0 : array.length, result2 = Array(length);
+        while (++index < length) {
+          result2[index] = iteratee(array[index], index, array);
+        }
+        return result2;
+      }
+      module2.exports = arrayMap;
+    }
+  });
+
+  // node_modules/lodash/_baseToString.js
+  var require_baseToString = __commonJS({
+    "node_modules/lodash/_baseToString.js"(exports, module2) {
+      var Symbol2 = require_Symbol();
+      var arrayMap = require_arrayMap();
+      var isArray2 = require_isArray();
+      var isSymbol = require_isSymbol();
+      var INFINITY = 1 / 0;
+      var symbolProto = Symbol2 ? Symbol2.prototype : void 0;
+      var symbolToString = symbolProto ? symbolProto.toString : void 0;
+      function baseToString(value) {
+        if (typeof value == "string") {
+          return value;
+        }
+        if (isArray2(value)) {
+          return arrayMap(value, baseToString) + "";
+        }
+        if (isSymbol(value)) {
+          return symbolToString ? symbolToString.call(value) : "";
+        }
+        var result2 = value + "";
+        return result2 == "0" && 1 / value == -INFINITY ? "-0" : result2;
+      }
+      module2.exports = baseToString;
+    }
+  });
+
+  // node_modules/lodash/toString.js
+  var require_toString = __commonJS({
+    "node_modules/lodash/toString.js"(exports, module2) {
+      var baseToString = require_baseToString();
+      function toString3(value) {
+        return value == null ? "" : baseToString(value);
+      }
+      module2.exports = toString3;
+    }
+  });
+
+  // node_modules/lodash/_castPath.js
+  var require_castPath = __commonJS({
+    "node_modules/lodash/_castPath.js"(exports, module2) {
+      var isArray2 = require_isArray();
+      var isKey = require_isKey();
+      var stringToPath = require_stringToPath();
+      var toString3 = require_toString();
+      function castPath(value, object) {
+        if (isArray2(value)) {
+          return value;
+        }
+        return isKey(value, object) ? [value] : stringToPath(toString3(value));
+      }
+      module2.exports = castPath;
+    }
+  });
+
+  // node_modules/lodash/_toKey.js
+  var require_toKey = __commonJS({
+    "node_modules/lodash/_toKey.js"(exports, module2) {
+      var isSymbol = require_isSymbol();
+      var INFINITY = 1 / 0;
+      function toKey(value) {
+        if (typeof value == "string" || isSymbol(value)) {
+          return value;
+        }
+        var result2 = value + "";
+        return result2 == "0" && 1 / value == -INFINITY ? "-0" : result2;
+      }
+      module2.exports = toKey;
+    }
+  });
+
+  // node_modules/lodash/_baseGet.js
+  var require_baseGet = __commonJS({
+    "node_modules/lodash/_baseGet.js"(exports, module2) {
+      var castPath = require_castPath();
+      var toKey = require_toKey();
+      function baseGet(object, path) {
+        path = castPath(path, object);
+        var index = 0, length = path.length;
+        while (object != null && index < length) {
+          object = object[toKey(path[index++])];
+        }
+        return index && index == length ? object : void 0;
+      }
+      module2.exports = baseGet;
+    }
+  });
+
+  // node_modules/lodash/get.js
+  var require_get = __commonJS({
+    "node_modules/lodash/get.js"(exports, module2) {
+      var baseGet = require_baseGet();
+      function get8(object, path, defaultValue) {
+        var result2 = object == null ? void 0 : baseGet(object, path);
+        return result2 === void 0 ? defaultValue : result2;
+      }
+      module2.exports = get8;
+    }
+  });
+
+  // node_modules/lodash/_baseHasIn.js
+  var require_baseHasIn = __commonJS({
+    "node_modules/lodash/_baseHasIn.js"(exports, module2) {
+      function baseHasIn(object, key) {
+        return object != null && key in Object(object);
+      }
+      module2.exports = baseHasIn;
+    }
+  });
+
+  // node_modules/lodash/_hasPath.js
+  var require_hasPath = __commonJS({
+    "node_modules/lodash/_hasPath.js"(exports, module2) {
+      var castPath = require_castPath();
+      var isArguments = require_isArguments();
+      var isArray2 = require_isArray();
+      var isIndex = require_isIndex();
+      var isLength = require_isLength();
+      var toKey = require_toKey();
+      function hasPath(object, path, hasFunc) {
+        path = castPath(path, object);
+        var index = -1, length = path.length, result2 = false;
+        while (++index < length) {
+          var key = toKey(path[index]);
+          if (!(result2 = object != null && hasFunc(object, key))) {
+            break;
+          }
+          object = object[key];
+        }
+        if (result2 || ++index != length) {
+          return result2;
+        }
+        length = object == null ? 0 : object.length;
+        return !!length && isLength(length) && isIndex(key, length) && (isArray2(object) || isArguments(object));
+      }
+      module2.exports = hasPath;
+    }
+  });
+
+  // node_modules/lodash/hasIn.js
+  var require_hasIn = __commonJS({
+    "node_modules/lodash/hasIn.js"(exports, module2) {
+      var baseHasIn = require_baseHasIn();
+      var hasPath = require_hasPath();
+      function hasIn(object, path) {
+        return object != null && hasPath(object, path, baseHasIn);
+      }
+      module2.exports = hasIn;
+    }
+  });
+
+  // node_modules/lodash/_baseMatchesProperty.js
+  var require_baseMatchesProperty = __commonJS({
+    "node_modules/lodash/_baseMatchesProperty.js"(exports, module2) {
+      var baseIsEqual = require_baseIsEqual();
+      var get8 = require_get();
+      var hasIn = require_hasIn();
+      var isKey = require_isKey();
+      var isStrictComparable = require_isStrictComparable();
+      var matchesStrictComparable = require_matchesStrictComparable();
+      var toKey = require_toKey();
+      var COMPARE_PARTIAL_FLAG = 1;
+      var COMPARE_UNORDERED_FLAG = 2;
+      function baseMatchesProperty(path, srcValue) {
+        if (isKey(path) && isStrictComparable(srcValue)) {
+          return matchesStrictComparable(toKey(path), srcValue);
+        }
+        return function(object) {
+          var objValue = get8(object, path);
+          return objValue === void 0 && objValue === srcValue ? hasIn(object, path) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
+        };
+      }
+      module2.exports = baseMatchesProperty;
+    }
+  });
+
+  // node_modules/lodash/identity.js
+  var require_identity = __commonJS({
+    "node_modules/lodash/identity.js"(exports, module2) {
+      function identity3(value) {
+        return value;
+      }
+      module2.exports = identity3;
+    }
+  });
+
+  // node_modules/lodash/_baseProperty.js
+  var require_baseProperty = __commonJS({
+    "node_modules/lodash/_baseProperty.js"(exports, module2) {
+      function baseProperty(key) {
+        return function(object) {
+          return object == null ? void 0 : object[key];
+        };
+      }
+      module2.exports = baseProperty;
+    }
+  });
+
+  // node_modules/lodash/_basePropertyDeep.js
+  var require_basePropertyDeep = __commonJS({
+    "node_modules/lodash/_basePropertyDeep.js"(exports, module2) {
+      var baseGet = require_baseGet();
+      function basePropertyDeep(path) {
+        return function(object) {
+          return baseGet(object, path);
+        };
+      }
+      module2.exports = basePropertyDeep;
+    }
+  });
+
+  // node_modules/lodash/property.js
+  var require_property = __commonJS({
+    "node_modules/lodash/property.js"(exports, module2) {
+      var baseProperty = require_baseProperty();
+      var basePropertyDeep = require_basePropertyDeep();
+      var isKey = require_isKey();
+      var toKey = require_toKey();
+      function property(path) {
+        return isKey(path) ? baseProperty(toKey(path)) : basePropertyDeep(path);
+      }
+      module2.exports = property;
+    }
+  });
+
+  // node_modules/lodash/_baseIteratee.js
+  var require_baseIteratee = __commonJS({
+    "node_modules/lodash/_baseIteratee.js"(exports, module2) {
+      var baseMatches = require_baseMatches();
+      var baseMatchesProperty = require_baseMatchesProperty();
+      var identity3 = require_identity();
+      var isArray2 = require_isArray();
+      var property = require_property();
+      function baseIteratee(value) {
+        if (typeof value == "function") {
+          return value;
+        }
+        if (value == null) {
+          return identity3;
+        }
+        if (typeof value == "object") {
+          return isArray2(value) ? baseMatchesProperty(value[0], value[1]) : baseMatches(value);
+        }
+        return property(value);
+      }
+      module2.exports = baseIteratee;
+    }
+  });
+
+  // node_modules/lodash/_createFind.js
+  var require_createFind = __commonJS({
+    "node_modules/lodash/_createFind.js"(exports, module2) {
+      var baseIteratee = require_baseIteratee();
+      var isArrayLike = require_isArrayLike();
+      var keys = require_keys();
+      function createFind(findIndexFunc) {
+        return function(collection, predicate, fromIndex) {
+          var iterable = Object(collection);
+          if (!isArrayLike(collection)) {
+            var iteratee = baseIteratee(predicate, 3);
+            collection = keys(collection);
+            predicate = function(key) {
+              return iteratee(iterable[key], key, iterable);
+            };
+          }
+          var index = findIndexFunc(collection, predicate, fromIndex);
+          return index > -1 ? iterable[iteratee ? collection[index] : index] : void 0;
+        };
+      }
+      module2.exports = createFind;
+    }
+  });
+
+  // node_modules/lodash/_baseFindIndex.js
+  var require_baseFindIndex = __commonJS({
+    "node_modules/lodash/_baseFindIndex.js"(exports, module2) {
+      function baseFindIndex(array, predicate, fromIndex, fromRight) {
+        var length = array.length, index = fromIndex + (fromRight ? 1 : -1);
+        while (fromRight ? index-- : ++index < length) {
+          if (predicate(array[index], index, array)) {
+            return index;
+          }
+        }
+        return -1;
+      }
+      module2.exports = baseFindIndex;
+    }
+  });
+
+  // node_modules/lodash/_trimmedEndIndex.js
+  var require_trimmedEndIndex = __commonJS({
+    "node_modules/lodash/_trimmedEndIndex.js"(exports, module2) {
+      var reWhitespace = /\s/;
+      function trimmedEndIndex(string) {
+        var index = string.length;
+        while (index-- && reWhitespace.test(string.charAt(index))) {
+        }
+        return index;
+      }
+      module2.exports = trimmedEndIndex;
+    }
+  });
+
+  // node_modules/lodash/_baseTrim.js
+  var require_baseTrim = __commonJS({
+    "node_modules/lodash/_baseTrim.js"(exports, module2) {
+      var trimmedEndIndex = require_trimmedEndIndex();
+      var reTrimStart = /^\s+/;
+      function baseTrim(string) {
+        return string ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, "") : string;
+      }
+      module2.exports = baseTrim;
+    }
+  });
+
+  // node_modules/lodash/toNumber.js
+  var require_toNumber = __commonJS({
+    "node_modules/lodash/toNumber.js"(exports, module2) {
+      var baseTrim = require_baseTrim();
+      var isObject2 = require_isObject();
+      var isSymbol = require_isSymbol();
+      var NAN = 0 / 0;
+      var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+      var reIsBinary = /^0b[01]+$/i;
+      var reIsOctal = /^0o[0-7]+$/i;
+      var freeParseInt = parseInt;
+      function toNumber(value) {
+        if (typeof value == "number") {
+          return value;
+        }
+        if (isSymbol(value)) {
+          return NAN;
+        }
+        if (isObject2(value)) {
+          var other = typeof value.valueOf == "function" ? value.valueOf() : value;
+          value = isObject2(other) ? other + "" : other;
+        }
+        if (typeof value != "string") {
+          return value === 0 ? value : +value;
+        }
+        value = baseTrim(value);
+        var isBinary = reIsBinary.test(value);
+        return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
+      }
+      module2.exports = toNumber;
+    }
+  });
+
+  // node_modules/lodash/toFinite.js
+  var require_toFinite = __commonJS({
+    "node_modules/lodash/toFinite.js"(exports, module2) {
+      var toNumber = require_toNumber();
+      var INFINITY = 1 / 0;
+      var MAX_INTEGER = 17976931348623157e292;
+      function toFinite(value) {
+        if (!value) {
+          return value === 0 ? value : 0;
+        }
+        value = toNumber(value);
+        if (value === INFINITY || value === -INFINITY) {
+          var sign = value < 0 ? -1 : 1;
+          return sign * MAX_INTEGER;
+        }
+        return value === value ? value : 0;
+      }
+      module2.exports = toFinite;
+    }
+  });
+
+  // node_modules/lodash/toInteger.js
+  var require_toInteger = __commonJS({
+    "node_modules/lodash/toInteger.js"(exports, module2) {
+      var toFinite = require_toFinite();
+      function toInteger(value) {
+        var result2 = toFinite(value), remainder = result2 % 1;
+        return result2 === result2 ? remainder ? result2 - remainder : result2 : 0;
+      }
+      module2.exports = toInteger;
+    }
+  });
+
+  // node_modules/lodash/findIndex.js
+  var require_findIndex = __commonJS({
+    "node_modules/lodash/findIndex.js"(exports, module2) {
+      var baseFindIndex = require_baseFindIndex();
+      var baseIteratee = require_baseIteratee();
+      var toInteger = require_toInteger();
+      var nativeMax = Math.max;
+      function findIndex(array, predicate, fromIndex) {
+        var length = array == null ? 0 : array.length;
+        if (!length) {
+          return -1;
+        }
+        var index = fromIndex == null ? 0 : toInteger(fromIndex);
+        if (index < 0) {
+          index = nativeMax(length + index, 0);
+        }
+        return baseFindIndex(array, baseIteratee(predicate, 3), index);
+      }
+      module2.exports = findIndex;
+    }
+  });
+
+  // node_modules/lodash/find.js
+  var require_find = __commonJS({
+    "node_modules/lodash/find.js"(exports, module2) {
+      var createFind = require_createFind();
+      var findIndex = require_findIndex();
+      var find4 = createFind(findIndex);
+      module2.exports = find4;
+    }
+  });
+
+  // packages/systems/ix2/shared/logic/IX2BrowserSupport.ts
+  var IX2BrowserSupport_exports = {};
+  __export(IX2BrowserSupport_exports, {
+    ELEMENT_MATCHES: () => ELEMENT_MATCHES,
+    FLEX_PREFIXED: () => FLEX_PREFIXED,
+    IS_BROWSER_ENV: () => IS_BROWSER_ENV,
+    TRANSFORM_PREFIXED: () => TRANSFORM_PREFIXED,
+    TRANSFORM_STYLE_PREFIXED: () => TRANSFORM_STYLE_PREFIXED,
+    withBrowser: () => withBrowser
+  });
+  var import_find, IS_BROWSER_ENV, withBrowser, ELEMENT_MATCHES, FLEX_PREFIXED, TRANSFORM_PREFIXED, TRANSFORM_PREFIX, TRANSFORM_STYLE_PREFIXED;
+  var init_IX2BrowserSupport = __esm({
+    "packages/systems/ix2/shared/logic/IX2BrowserSupport.ts"() {
+      "use strict";
+      import_find = __toESM(require_find());
+      IS_BROWSER_ENV = typeof window !== "undefined";
+      withBrowser = (fn, fallback) => {
+        if (IS_BROWSER_ENV) {
+          return fn();
+        }
+        return fallback;
+      };
+      ELEMENT_MATCHES = withBrowser(() => {
+        return (0, import_find.default)(
+          [
+            "matches",
+            "matchesSelector",
+            "mozMatchesSelector",
+            "msMatchesSelector",
+            "oMatchesSelector",
+            "webkitMatchesSelector"
+          ],
+          (key) => key in Element.prototype
+        );
+      });
+      FLEX_PREFIXED = withBrowser(() => {
+        const el = document.createElement("i");
+        const values2 = [
+          "flex",
+          "-webkit-flex",
+          "-ms-flexbox",
+          "-moz-box",
+          "-webkit-box"
+        ];
+        const none = "";
+        try {
+          const { length } = values2;
+          for (let i = 0; i < length; i++) {
+            const value = values2[i];
+            el.style.display = value;
+            if (el.style.display === value) {
+              return value;
+            }
+          }
+          return none;
+        } catch (err) {
+          return none;
+        }
+      }, "flex");
+      TRANSFORM_PREFIXED = withBrowser(() => {
+        const el = document.createElement("i");
+        if (el.style.transform == null) {
+          const prefixes = ["Webkit", "Moz", "ms"];
+          const suffix = "Transform";
+          const { length } = prefixes;
+          for (let i = 0; i < length; i++) {
+            const prop = prefixes[i] + suffix;
+            if (el.style[prop] !== void 0) {
+              return prop;
+            }
+          }
+        }
+        return "transform";
+      }, "transform");
+      TRANSFORM_PREFIX = TRANSFORM_PREFIXED.split("transform")[0];
+      TRANSFORM_STYLE_PREFIXED = TRANSFORM_PREFIX ? TRANSFORM_PREFIX + "TransformStyle" : "transformStyle";
+    }
+  });
+
+  // node_modules/bezier-easing/src/index.js
+  var require_src = __commonJS({
+    "node_modules/bezier-easing/src/index.js"(exports, module2) {
+      var NEWTON_ITERATIONS = 4;
+      var NEWTON_MIN_SLOPE = 1e-3;
+      var SUBDIVISION_PRECISION = 1e-7;
+      var SUBDIVISION_MAX_ITERATIONS = 10;
+      var kSplineTableSize = 11;
+      var kSampleStepSize = 1 / (kSplineTableSize - 1);
+      var float32ArraySupported = typeof Float32Array === "function";
+      function A(aA1, aA2) {
+        return 1 - 3 * aA2 + 3 * aA1;
+      }
+      function B(aA1, aA2) {
+        return 3 * aA2 - 6 * aA1;
+      }
+      function C(aA1) {
+        return 3 * aA1;
+      }
+      function calcBezier(aT, aA1, aA2) {
+        return ((A(aA1, aA2) * aT + B(aA1, aA2)) * aT + C(aA1)) * aT;
+      }
+      function getSlope(aT, aA1, aA2) {
+        return 3 * A(aA1, aA2) * aT * aT + 2 * B(aA1, aA2) * aT + C(aA1);
+      }
+      function binarySubdivide(aX, aA, aB, mX1, mX2) {
+        var currentX, currentT, i = 0;
+        do {
+          currentT = aA + (aB - aA) / 2;
+          currentX = calcBezier(currentT, mX1, mX2) - aX;
+          if (currentX > 0) {
+            aB = currentT;
+          } else {
+            aA = currentT;
+          }
+        } while (Math.abs(currentX) > SUBDIVISION_PRECISION && ++i < SUBDIVISION_MAX_ITERATIONS);
+        return currentT;
+      }
+      function newtonRaphsonIterate(aX, aGuessT, mX1, mX2) {
+        for (var i = 0; i < NEWTON_ITERATIONS; ++i) {
+          var currentSlope = getSlope(aGuessT, mX1, mX2);
+          if (currentSlope === 0) {
+            return aGuessT;
+          }
+          var currentX = calcBezier(aGuessT, mX1, mX2) - aX;
+          aGuessT -= currentX / currentSlope;
+        }
+        return aGuessT;
+      }
+      module2.exports = function bezier(mX1, mY1, mX2, mY2) {
+        if (!(0 <= mX1 && mX1 <= 1 && 0 <= mX2 && mX2 <= 1)) {
+          throw new Error("bezier x values must be in [0, 1] range");
+        }
+        var sampleValues = float32ArraySupported ? new Float32Array(kSplineTableSize) : new Array(kSplineTableSize);
+        if (mX1 !== mY1 || mX2 !== mY2) {
+          for (var i = 0; i < kSplineTableSize; ++i) {
+            sampleValues[i] = calcBezier(i * kSampleStepSize, mX1, mX2);
+          }
+        }
+        function getTForX(aX) {
+          var intervalStart = 0;
+          var currentSample = 1;
+          var lastSample = kSplineTableSize - 1;
+          for (; currentSample !== lastSample && sampleValues[currentSample] <= aX; ++currentSample) {
+            intervalStart += kSampleStepSize;
+          }
+          --currentSample;
+          var dist = (aX - sampleValues[currentSample]) / (sampleValues[currentSample + 1] - sampleValues[currentSample]);
+          var guessForT = intervalStart + dist * kSampleStepSize;
+          var initialSlope = getSlope(guessForT, mX1, mX2);
+          if (initialSlope >= NEWTON_MIN_SLOPE) {
+            return newtonRaphsonIterate(aX, guessForT, mX1, mX2);
+          } else if (initialSlope === 0) {
+            return guessForT;
+          } else {
+            return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, mX1, mX2);
+          }
+        }
+        return function BezierEasing3(x) {
+          if (mX1 === mY1 && mX2 === mY2) {
+            return x;
+          }
+          if (x === 0) {
+            return 0;
+          }
+          if (x === 1) {
+            return 1;
+          }
+          return calcBezier(getTForX(x), mY1, mY2);
+        };
+      };
+    }
+  });
+
+  // packages/systems/ix2/shared/logic/IX2Easings.ts
+  var IX2Easings_exports = {};
+  __export(IX2Easings_exports, {
+    bounce: () => bounce,
+    bouncePast: () => bouncePast,
+    ease: () => ease,
+    easeIn: () => easeIn,
+    easeInOut: () => easeInOut,
+    easeOut: () => easeOut,
+    inBack: () => inBack,
+    inCirc: () => inCirc,
+    inCubic: () => inCubic,
+    inElastic: () => inElastic,
+    inExpo: () => inExpo,
+    inOutBack: () => inOutBack,
+    inOutCirc: () => inOutCirc,
+    inOutCubic: () => inOutCubic,
+    inOutElastic: () => inOutElastic,
+    inOutExpo: () => inOutExpo,
+    inOutQuad: () => inOutQuad,
+    inOutQuart: () => inOutQuart,
+    inOutQuint: () => inOutQuint,
+    inOutSine: () => inOutSine,
+    inQuad: () => inQuad,
+    inQuart: () => inQuart,
+    inQuint: () => inQuint,
+    inSine: () => inSine,
+    outBack: () => outBack,
+    outBounce: () => outBounce,
+    outCirc: () => outCirc,
+    outCubic: () => outCubic,
+    outElastic: () => outElastic,
+    outExpo: () => outExpo,
+    outQuad: () => outQuad,
+    outQuart: () => outQuart,
+    outQuint: () => outQuint,
+    outSine: () => outSine,
+    swingFrom: () => swingFrom,
+    swingFromTo: () => swingFromTo,
+    swingTo: () => swingTo
+  });
+  function inQuad(pos) {
+    return Math.pow(pos, 2);
+  }
+  function outQuad(pos) {
+    return -(Math.pow(pos - 1, 2) - 1);
+  }
+  function inOutQuad(pos) {
+    if ((pos /= 0.5) < 1) {
+      return 0.5 * Math.pow(pos, 2);
+    }
+    return -0.5 * ((pos -= 2) * pos - 2);
+  }
+  function inCubic(pos) {
+    return Math.pow(pos, 3);
+  }
+  function outCubic(pos) {
+    return Math.pow(pos - 1, 3) + 1;
+  }
+  function inOutCubic(pos) {
+    if ((pos /= 0.5) < 1) {
+      return 0.5 * Math.pow(pos, 3);
+    }
+    return 0.5 * (Math.pow(pos - 2, 3) + 2);
+  }
+  function inQuart(pos) {
+    return Math.pow(pos, 4);
+  }
+  function outQuart(pos) {
+    return -(Math.pow(pos - 1, 4) - 1);
+  }
+  function inOutQuart(pos) {
+    if ((pos /= 0.5) < 1) {
+      return 0.5 * Math.pow(pos, 4);
+    }
+    return -0.5 * ((pos -= 2) * Math.pow(pos, 3) - 2);
+  }
+  function inQuint(pos) {
+    return Math.pow(pos, 5);
+  }
+  function outQuint(pos) {
+    return Math.pow(pos - 1, 5) + 1;
+  }
+  function inOutQuint(pos) {
+    if ((pos /= 0.5) < 1) {
+      return 0.5 * Math.pow(pos, 5);
+    }
+    return 0.5 * (Math.pow(pos - 2, 5) + 2);
+  }
+  function inSine(pos) {
+    return -Math.cos(pos * (Math.PI / 2)) + 1;
+  }
+  function outSine(pos) {
+    return Math.sin(pos * (Math.PI / 2));
+  }
+  function inOutSine(pos) {
+    return -0.5 * (Math.cos(Math.PI * pos) - 1);
+  }
+  function inExpo(pos) {
+    return pos === 0 ? 0 : Math.pow(2, 10 * (pos - 1));
+  }
+  function outExpo(pos) {
+    return pos === 1 ? 1 : -Math.pow(2, -10 * pos) + 1;
+  }
+  function inOutExpo(pos) {
+    if (pos === 0) {
+      return 0;
+    }
+    if (pos === 1) {
+      return 1;
+    }
+    if ((pos /= 0.5) < 1) {
+      return 0.5 * Math.pow(2, 10 * (pos - 1));
+    }
+    return 0.5 * (-Math.pow(2, -10 * --pos) + 2);
+  }
+  function inCirc(pos) {
+    return -(Math.sqrt(1 - pos * pos) - 1);
+  }
+  function outCirc(pos) {
+    return Math.sqrt(1 - Math.pow(pos - 1, 2));
+  }
+  function inOutCirc(pos) {
+    if ((pos /= 0.5) < 1) {
+      return -0.5 * (Math.sqrt(1 - pos * pos) - 1);
+    }
+    return 0.5 * (Math.sqrt(1 - (pos -= 2) * pos) + 1);
+  }
+  function outBounce(pos) {
+    if (pos < 1 / 2.75) {
+      return 7.5625 * pos * pos;
+    } else if (pos < 2 / 2.75) {
+      return 7.5625 * (pos -= 1.5 / 2.75) * pos + 0.75;
+    } else if (pos < 2.5 / 2.75) {
+      return 7.5625 * (pos -= 2.25 / 2.75) * pos + 0.9375;
+    } else {
+      return 7.5625 * (pos -= 2.625 / 2.75) * pos + 0.984375;
+    }
+  }
+  function inBack(pos) {
+    const s = magicSwing;
+    return pos * pos * ((s + 1) * pos - s);
+  }
+  function outBack(pos) {
+    const s = magicSwing;
+    return (pos -= 1) * pos * ((s + 1) * pos + s) + 1;
+  }
+  function inOutBack(pos) {
+    let s = magicSwing;
+    if ((pos /= 0.5) < 1) {
+      return 0.5 * (pos * pos * (((s *= 1.525) + 1) * pos - s));
+    }
+    return 0.5 * ((pos -= 2) * pos * (((s *= 1.525) + 1) * pos + s) + 2);
+  }
+  function inElastic(pos) {
+    let s = magicSwing;
+    let p = 0;
+    let a = 1;
+    if (pos === 0) {
+      return 0;
+    }
+    if (pos === 1) {
+      return 1;
+    }
+    if (!p) {
+      p = 0.3;
+    }
+    if (a < 1) {
+      a = 1;
+      s = p / 4;
+    } else {
+      s = p / (2 * Math.PI) * Math.asin(1 / a);
+    }
+    return -(a * Math.pow(2, 10 * (pos -= 1)) * Math.sin((pos - s) * (2 * Math.PI) / p));
+  }
+  function outElastic(pos) {
+    let s = magicSwing;
+    let p = 0;
+    let a = 1;
+    if (pos === 0) {
+      return 0;
+    }
+    if (pos === 1) {
+      return 1;
+    }
+    if (!p) {
+      p = 0.3;
+    }
+    if (a < 1) {
+      a = 1;
+      s = p / 4;
+    } else {
+      s = p / (2 * Math.PI) * Math.asin(1 / a);
+    }
+    return a * Math.pow(2, -10 * pos) * Math.sin((pos - s) * (2 * Math.PI) / p) + 1;
+  }
+  function inOutElastic(pos) {
+    let s = magicSwing;
+    let p = 0;
+    let a = 1;
+    if (pos === 0) {
+      return 0;
+    }
+    if ((pos /= 1 / 2) === 2) {
+      return 1;
+    }
+    if (!p) {
+      p = 0.3 * 1.5;
+    }
+    if (a < 1) {
+      a = 1;
+      s = p / 4;
+    } else {
+      s = p / (2 * Math.PI) * Math.asin(1 / a);
+    }
+    if (pos < 1) {
+      return -0.5 * (a * Math.pow(2, 10 * (pos -= 1)) * Math.sin((pos - s) * (2 * Math.PI) / p));
+    }
+    return a * Math.pow(2, -10 * (pos -= 1)) * Math.sin((pos - s) * (2 * Math.PI) / p) * 0.5 + 1;
+  }
+  function swingFromTo(pos) {
+    let s = magicSwing;
+    return (pos /= 0.5) < 1 ? 0.5 * (pos * pos * (((s *= 1.525) + 1) * pos - s)) : 0.5 * ((pos -= 2) * pos * (((s *= 1.525) + 1) * pos + s) + 2);
+  }
+  function swingFrom(pos) {
+    const s = magicSwing;
+    return pos * pos * ((s + 1) * pos - s);
+  }
+  function swingTo(pos) {
+    const s = magicSwing;
+    return (pos -= 1) * pos * ((s + 1) * pos + s) + 1;
+  }
+  function bounce(pos) {
+    if (pos < 1 / 2.75) {
+      return 7.5625 * pos * pos;
+    } else if (pos < 2 / 2.75) {
+      return 7.5625 * (pos -= 1.5 / 2.75) * pos + 0.75;
+    } else if (pos < 2.5 / 2.75) {
+      return 7.5625 * (pos -= 2.25 / 2.75) * pos + 0.9375;
+    } else {
+      return 7.5625 * (pos -= 2.625 / 2.75) * pos + 0.984375;
+    }
+  }
+  function bouncePast(pos) {
+    if (pos < 1 / 2.75) {
+      return 7.5625 * pos * pos;
+    } else if (pos < 2 / 2.75) {
+      return 2 - (7.5625 * (pos -= 1.5 / 2.75) * pos + 0.75);
+    } else if (pos < 2.5 / 2.75) {
+      return 2 - (7.5625 * (pos -= 2.25 / 2.75) * pos + 0.9375);
+    } else {
+      return 2 - (7.5625 * (pos -= 2.625 / 2.75) * pos + 0.984375);
+    }
+  }
+  var import_bezier_easing, magicSwing, ease, easeIn, easeOut, easeInOut;
+  var init_IX2Easings = __esm({
+    "packages/systems/ix2/shared/logic/IX2Easings.ts"() {
+      "use strict";
+      import_bezier_easing = __toESM(require_src());
+      magicSwing = 1.70158;
+      ease = (0, import_bezier_easing.default)(0.25, 0.1, 0.25, 1);
+      easeIn = (0, import_bezier_easing.default)(0.42, 0, 1, 1);
+      easeOut = (0, import_bezier_easing.default)(0, 0, 0.58, 1);
+      easeInOut = (0, import_bezier_easing.default)(0.42, 0, 0.58, 1);
+    }
+  });
+
+  // packages/systems/ix2/shared/logic/IX2EasingUtils.ts
+  var IX2EasingUtils_exports = {};
+  __export(IX2EasingUtils_exports, {
+    applyEasing: () => applyEasing,
+    createBezierEasing: () => createBezierEasing,
+    optimizeFloat: () => optimizeFloat
+  });
+  function optimizeFloat(value, digits = 5, base = 10) {
+    const pow = Math.pow(base, digits);
+    const float = Number(Math.round(value * pow) / pow);
+    return Math.abs(float) > 1e-4 ? float : 0;
+  }
+  function createBezierEasing(easing) {
+    return (0, import_bezier_easing2.default)(...easing);
+  }
+  function applyEasing(easing, position, customEasingFn) {
+    if (position === 0) {
+      return 0;
+    }
+    if (position === 1) {
+      return 1;
+    }
+    if (customEasingFn) {
+      return optimizeFloat(position > 0 ? customEasingFn(position) : position);
+    }
+    return optimizeFloat(
+      position > 0 && easing && IX2Easings_exports[easing] ? IX2Easings_exports[easing](position) : position
+    );
+  }
+  var import_bezier_easing2;
+  var init_IX2EasingUtils = __esm({
+    "packages/systems/ix2/shared/logic/IX2EasingUtils.ts"() {
+      "use strict";
+      init_IX2Easings();
+      import_bezier_easing2 = __toESM(require_src());
+    }
+  });
+
+  // packages/systems/ix2/shared/reducers/IX2ElementsReducer.ts
+  var IX2ElementsReducer_exports = {};
+  __export(IX2ElementsReducer_exports, {
+    createElementState: () => createElementState,
+    ixElements: () => ixElements,
+    mergeActionState: () => mergeActionState
+  });
+  function createElementState(state, ref, refType, elementId, actionItem) {
+    const refId = refType === PLAIN_OBJECT2 ? (0, import_timm3.getIn)(actionItem, ["config", "target", "objectId"]) : null;
+    return (0, import_timm3.mergeIn)(state, [elementId], {
+      id: elementId,
+      ref,
+      refId,
+      refType
+    });
+  }
+  function mergeActionState(state, elementId, actionTypeId, actionState, actionItem) {
+    const units = pickUnits(actionItem);
+    const mergePath = [elementId, refState, actionTypeId];
+    return (0, import_timm3.mergeIn)(state, mergePath, actionState, units);
+  }
+  function pickUnits(actionItem) {
+    const { config } = actionItem;
+    return valueUnitPairs.reduce((result2, pair) => {
+      const valueKey = pair[0];
+      const unitKey = pair[1];
+      const configValue = config[valueKey];
+      const configUnit = config[unitKey];
+      if (configValue != null && configUnit != null) {
+        result2[unitKey] = configUnit;
+      }
+      return result2;
+    }, {});
+  }
+  var import_timm3, HTML_ELEMENT2, PLAIN_OBJECT2, ABSTRACT_NODE2, CONFIG_X_VALUE2, CONFIG_Y_VALUE2, CONFIG_Z_VALUE2, CONFIG_VALUE2, CONFIG_X_UNIT2, CONFIG_Y_UNIT2, CONFIG_Z_UNIT2, CONFIG_UNIT2, IX2_SESSION_STOPPED3, IX2_INSTANCE_ADDED2, IX2_ELEMENT_STATE_CHANGED2, initialState3, refState, ixElements, valueUnitPairs;
+  var init_IX2ElementsReducer = __esm({
+    "packages/systems/ix2/shared/reducers/IX2ElementsReducer.ts"() {
+      "use strict";
+      import_timm3 = __toESM(require_timm());
+      init_shared_constants();
+      ({
+        HTML_ELEMENT: HTML_ELEMENT2,
+        PLAIN_OBJECT: PLAIN_OBJECT2,
+        ABSTRACT_NODE: ABSTRACT_NODE2,
+        CONFIG_X_VALUE: CONFIG_X_VALUE2,
+        CONFIG_Y_VALUE: CONFIG_Y_VALUE2,
+        CONFIG_Z_VALUE: CONFIG_Z_VALUE2,
+        CONFIG_VALUE: CONFIG_VALUE2,
+        CONFIG_X_UNIT: CONFIG_X_UNIT2,
+        CONFIG_Y_UNIT: CONFIG_Y_UNIT2,
+        CONFIG_Z_UNIT: CONFIG_Z_UNIT2,
+        CONFIG_UNIT: CONFIG_UNIT2
+      } = IX2EngineConstants_exports);
+      ({ IX2_SESSION_STOPPED: IX2_SESSION_STOPPED3, IX2_INSTANCE_ADDED: IX2_INSTANCE_ADDED2, IX2_ELEMENT_STATE_CHANGED: IX2_ELEMENT_STATE_CHANGED2 } = IX2EngineActionTypes_exports);
+      initialState3 = {};
+      refState = "refState";
+      ixElements = (state = initialState3, action = {}) => {
+        switch (action.type) {
+          case IX2_SESSION_STOPPED3: {
+            return initialState3;
+          }
+          case IX2_INSTANCE_ADDED2: {
+            const {
+              elementId,
+              element: ref,
+              origin,
+              actionItem,
+              refType
+            } = action.payload;
+            const { actionTypeId } = actionItem;
+            let newState = state;
+            if ((0, import_timm3.getIn)(newState, [elementId, ref]) !== ref) {
+              newState = createElementState(
+                newState,
+                ref,
+                refType,
+                elementId,
+                actionItem
+              );
+            }
+            return mergeActionState(
+              newState,
+              elementId,
+              actionTypeId,
+              origin,
+              actionItem
+            );
+          }
+          case IX2_ELEMENT_STATE_CHANGED2: {
+            const { elementId, actionTypeId, current, actionItem } = action.payload;
+            return mergeActionState(
+              state,
+              elementId,
+              actionTypeId,
+              current,
+              actionItem
+            );
+          }
+          default: {
+            return state;
+          }
+        }
+      };
+      valueUnitPairs = [
+        [CONFIG_X_VALUE2, CONFIG_X_UNIT2],
+        [CONFIG_Y_VALUE2, CONFIG_Y_UNIT2],
+        [CONFIG_Z_VALUE2, CONFIG_Z_UNIT2],
+        [CONFIG_VALUE2, CONFIG_UNIT2]
+      ];
+    }
+  });
+
+  // packages/systems/ix2/plugins/IX2Lottie.js
+  var require_IX2Lottie = __commonJS({
+    "packages/systems/ix2/plugins/IX2Lottie.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.renderPlugin = exports.getPluginOrigin = exports.getPluginDuration = exports.getPluginDestination = exports.getPluginConfig = exports.createPluginInstance = exports.clearPlugin = void 0;
+      var getPluginConfig2 = (actionItemConfig) => {
+        return actionItemConfig.value;
+      };
+      exports.getPluginConfig = getPluginConfig2;
+      var getPluginDuration3 = (element, actionItem) => {
+        if (actionItem.config.duration !== "auto") {
+          return null;
+        }
+        const duration = parseFloat(element.getAttribute("data-duration"));
+        if (duration > 0) {
+          return duration * 1e3;
+        }
+        return parseFloat(element.getAttribute("data-default-duration")) * 1e3;
+      };
+      exports.getPluginDuration = getPluginDuration3;
+      var getPluginOrigin2 = (refState2) => {
+        return refState2 || {
+          value: 0
+        };
+      };
+      exports.getPluginOrigin = getPluginOrigin2;
+      var getPluginDestination2 = (actionItemConfig) => {
+        return {
+          value: actionItemConfig.value
+        };
+      };
+      exports.getPluginDestination = getPluginDestination2;
+      var createPluginInstance3 = (element) => {
+        const instance = window.Webflow.require("lottie").createInstance(element);
+        instance.stop();
+        instance.setSubframe(true);
+        return instance;
+      };
+      exports.createPluginInstance = createPluginInstance3;
+      var renderPlugin2 = (pluginInstance, refState2, actionItem) => {
+        if (!pluginInstance) {
+          return;
+        }
+        const percent = refState2[actionItem.actionTypeId].value / 100;
+        pluginInstance.goToFrame(pluginInstance.frames * percent);
+      };
+      exports.renderPlugin = renderPlugin2;
+      var clearPlugin2 = (element) => {
+        const instance = window.Webflow.require("lottie").createInstance(element);
+        instance.stop();
+      };
+      exports.clearPlugin = clearPlugin2;
+    }
+  });
+
+  // packages/systems/ix2/plugins/IX2Spline.js
+  var require_IX2Spline = __commonJS({
+    "packages/systems/ix2/plugins/IX2Spline.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.renderPlugin = exports.getPluginOrigin = exports.getPluginDuration = exports.getPluginDestination = exports.getPluginConfig = exports.createPluginInstance = exports.clearPlugin = void 0;
+      var queryContainerElement = (elementId) => document.querySelector(`[data-w-id="${elementId}"]`);
+      var getFrontendModule = () => window.Webflow.require("spline");
+      var difference = (arr1, arr2) => arr1.filter((x) => !arr2.includes(x));
+      var getPluginConfig2 = (actionItemConfig, key) => {
+        return actionItemConfig.value[key];
+      };
+      exports.getPluginConfig = getPluginConfig2;
+      var getPluginDuration3 = () => {
+        return null;
+      };
+      exports.getPluginDuration = getPluginDuration3;
+      var DEFAULT_VALUES = Object.freeze({
+        positionX: 0,
+        positionY: 0,
+        positionZ: 0,
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: 0,
+        scaleX: 1,
+        scaleY: 1,
+        scaleZ: 1
+      });
+      var getPluginOrigin2 = (refState2, actionItem) => {
+        const destination = actionItem.config.value;
+        const destinationKeys = Object.keys(destination);
+        if (refState2) {
+          const stateKeys2 = Object.keys(refState2);
+          const diffKeys = difference(destinationKeys, stateKeys2);
+          if (diffKeys.length) {
+            const origin2 = diffKeys.reduce((result2, key) => {
+              result2[key] = DEFAULT_VALUES[key];
+              return result2;
+            }, refState2);
+            return origin2;
+          }
+          return refState2;
+        }
+        const origin = destinationKeys.reduce((result2, key) => {
+          result2[key] = DEFAULT_VALUES[key];
+          return result2;
+        }, {});
+        return origin;
+      };
+      exports.getPluginOrigin = getPluginOrigin2;
+      var getPluginDestination2 = (actionItemConfig) => {
+        return actionItemConfig.value;
+      };
+      exports.getPluginDestination = getPluginDestination2;
+      var createPluginInstance3 = (element, actionItem) => {
+        var _actionItem$config;
+        const pluginElementId = actionItem === null || actionItem === void 0 || (_actionItem$config = actionItem.config) === null || _actionItem$config === void 0 || (_actionItem$config = _actionItem$config.target) === null || _actionItem$config === void 0 ? void 0 : _actionItem$config.pluginElement;
+        return pluginElementId ? queryContainerElement(pluginElementId) : null;
+      };
+      exports.createPluginInstance = createPluginInstance3;
+      var renderPlugin2 = (containerElement, refState2, actionItem) => {
+        const frontendModule = getFrontendModule();
+        const instance = frontendModule.getInstance(containerElement);
+        const objectId = actionItem.config.target.objectId;
+        const renderSpline = (spline) => {
+          if (!spline) {
+            throw new Error("Invalid spline app passed to renderSpline");
+          }
+          const obj = objectId && spline.findObjectById(objectId);
+          if (!obj) {
+            return;
+          }
+          const {
+            PLUGIN_SPLINE: props
+          } = refState2;
+          if (props.positionX != null) {
+            obj.position.x = props.positionX;
+          }
+          if (props.positionY != null) {
+            obj.position.y = props.positionY;
+          }
+          if (props.positionZ != null) {
+            obj.position.z = props.positionZ;
+          }
+          if (props.rotationX != null) {
+            obj.rotation.x = props.rotationX;
+          }
+          if (props.rotationY != null) {
+            obj.rotation.y = props.rotationY;
+          }
+          if (props.rotationZ != null) {
+            obj.rotation.z = props.rotationZ;
+          }
+          if (props.scaleX != null) {
+            obj.scale.x = props.scaleX;
+          }
+          if (props.scaleY != null) {
+            obj.scale.y = props.scaleY;
+          }
+          if (props.scaleZ != null) {
+            obj.scale.z = props.scaleZ;
+          }
+        };
+        if (instance) {
+          renderSpline(instance.spline);
+        } else {
+          frontendModule.setLoadHandler(containerElement, renderSpline);
+        }
+      };
+      exports.renderPlugin = renderPlugin2;
+      var clearPlugin2 = () => {
+        return null;
+      };
+      exports.clearPlugin = clearPlugin2;
+    }
+  });
+
+  // packages/systems/ix2/shared-utils/normalizeColor.js
+  var require_normalizeColor = __commonJS({
+    "packages/systems/ix2/shared-utils/normalizeColor.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.normalizeColor = normalizeColor2;
+      var colorNamesObj = {
+        aliceblue: "#F0F8FF",
+        antiquewhite: "#FAEBD7",
+        aqua: "#00FFFF",
+        aquamarine: "#7FFFD4",
+        azure: "#F0FFFF",
+        beige: "#F5F5DC",
+        bisque: "#FFE4C4",
+        black: "#000000",
+        blanchedalmond: "#FFEBCD",
+        blue: "#0000FF",
+        blueviolet: "#8A2BE2",
+        brown: "#A52A2A",
+        burlywood: "#DEB887",
+        cadetblue: "#5F9EA0",
+        chartreuse: "#7FFF00",
+        chocolate: "#D2691E",
+        coral: "#FF7F50",
+        cornflowerblue: "#6495ED",
+        cornsilk: "#FFF8DC",
+        crimson: "#DC143C",
+        cyan: "#00FFFF",
+        darkblue: "#00008B",
+        darkcyan: "#008B8B",
+        darkgoldenrod: "#B8860B",
+        darkgray: "#A9A9A9",
+        darkgreen: "#006400",
+        darkgrey: "#A9A9A9",
+        darkkhaki: "#BDB76B",
+        darkmagenta: "#8B008B",
+        darkolivegreen: "#556B2F",
+        darkorange: "#FF8C00",
+        darkorchid: "#9932CC",
+        darkred: "#8B0000",
+        darksalmon: "#E9967A",
+        darkseagreen: "#8FBC8F",
+        darkslateblue: "#483D8B",
+        darkslategray: "#2F4F4F",
+        darkslategrey: "#2F4F4F",
+        darkturquoise: "#00CED1",
+        darkviolet: "#9400D3",
+        deeppink: "#FF1493",
+        deepskyblue: "#00BFFF",
+        dimgray: "#696969",
+        dimgrey: "#696969",
+        dodgerblue: "#1E90FF",
+        firebrick: "#B22222",
+        floralwhite: "#FFFAF0",
+        forestgreen: "#228B22",
+        fuchsia: "#FF00FF",
+        gainsboro: "#DCDCDC",
+        ghostwhite: "#F8F8FF",
+        gold: "#FFD700",
+        goldenrod: "#DAA520",
+        gray: "#808080",
+        green: "#008000",
+        greenyellow: "#ADFF2F",
+        grey: "#808080",
+        honeydew: "#F0FFF0",
+        hotpink: "#FF69B4",
+        indianred: "#CD5C5C",
+        indigo: "#4B0082",
+        ivory: "#FFFFF0",
+        khaki: "#F0E68C",
+        lavender: "#E6E6FA",
+        lavenderblush: "#FFF0F5",
+        lawngreen: "#7CFC00",
+        lemonchiffon: "#FFFACD",
+        lightblue: "#ADD8E6",
+        lightcoral: "#F08080",
+        lightcyan: "#E0FFFF",
+        lightgoldenrodyellow: "#FAFAD2",
+        lightgray: "#D3D3D3",
+        lightgreen: "#90EE90",
+        lightgrey: "#D3D3D3",
+        lightpink: "#FFB6C1",
+        lightsalmon: "#FFA07A",
+        lightseagreen: "#20B2AA",
+        lightskyblue: "#87CEFA",
+        lightslategray: "#778899",
+        lightslategrey: "#778899",
+        lightsteelblue: "#B0C4DE",
+        lightyellow: "#FFFFE0",
+        lime: "#00FF00",
+        limegreen: "#32CD32",
+        linen: "#FAF0E6",
+        magenta: "#FF00FF",
+        maroon: "#800000",
+        mediumaquamarine: "#66CDAA",
+        mediumblue: "#0000CD",
+        mediumorchid: "#BA55D3",
+        mediumpurple: "#9370DB",
+        mediumseagreen: "#3CB371",
+        mediumslateblue: "#7B68EE",
+        mediumspringgreen: "#00FA9A",
+        mediumturquoise: "#48D1CC",
+        mediumvioletred: "#C71585",
+        midnightblue: "#191970",
+        mintcream: "#F5FFFA",
+        mistyrose: "#FFE4E1",
+        moccasin: "#FFE4B5",
+        navajowhite: "#FFDEAD",
+        navy: "#000080",
+        oldlace: "#FDF5E6",
+        olive: "#808000",
+        olivedrab: "#6B8E23",
+        orange: "#FFA500",
+        orangered: "#FF4500",
+        orchid: "#DA70D6",
+        palegoldenrod: "#EEE8AA",
+        palegreen: "#98FB98",
+        paleturquoise: "#AFEEEE",
+        palevioletred: "#DB7093",
+        papayawhip: "#FFEFD5",
+        peachpuff: "#FFDAB9",
+        peru: "#CD853F",
+        pink: "#FFC0CB",
+        plum: "#DDA0DD",
+        powderblue: "#B0E0E6",
+        purple: "#800080",
+        rebeccapurple: "#663399",
+        red: "#FF0000",
+        rosybrown: "#BC8F8F",
+        royalblue: "#4169E1",
+        saddlebrown: "#8B4513",
+        salmon: "#FA8072",
+        sandybrown: "#F4A460",
+        seagreen: "#2E8B57",
+        seashell: "#FFF5EE",
+        sienna: "#A0522D",
+        silver: "#C0C0C0",
+        skyblue: "#87CEEB",
+        slateblue: "#6A5ACD",
+        slategray: "#708090",
+        slategrey: "#708090",
+        snow: "#FFFAFA",
+        springgreen: "#00FF7F",
+        steelblue: "#4682B4",
+        tan: "#D2B48C",
+        teal: "#008080",
+        thistle: "#D8BFD8",
+        tomato: "#FF6347",
+        turquoise: "#40E0D0",
+        violet: "#EE82EE",
+        wheat: "#F5DEB3",
+        white: "#FFFFFF",
+        whitesmoke: "#F5F5F5",
+        yellow: "#FFFF00",
+        yellowgreen: "#9ACD32"
+      };
+      function normalizeColor2(inputColor) {
+        let red;
+        let green;
+        let blue;
+        let alpha = 1;
+        const rawColor = inputColor.replace(/\s/g, "").toLowerCase();
+        const namedColor = typeof colorNamesObj[rawColor] === "string" ? colorNamesObj[rawColor].toLowerCase() : null;
+        const cleanColor = namedColor || rawColor;
+        if (cleanColor.startsWith("#")) {
+          const hex = cleanColor.substring(1);
+          if (hex.length === 3 || hex.length === 4) {
+            red = parseInt(hex[0] + hex[0], 16);
+            green = parseInt(hex[1] + hex[1], 16);
+            blue = parseInt(hex[2] + hex[2], 16);
+            if (hex.length === 4) {
+              alpha = parseInt(hex[3] + hex[3], 16) / 255;
+            }
+          } else if (hex.length === 6 || hex.length === 8) {
+            red = parseInt(hex.substring(0, 2), 16);
+            green = parseInt(hex.substring(2, 4), 16);
+            blue = parseInt(hex.substring(4, 6), 16);
+            if (hex.length === 8) {
+              alpha = parseInt(hex.substring(6, 8), 16) / 255;
+            }
+          }
+        } else if (cleanColor.startsWith("rgba")) {
+          const rgbaValues = cleanColor.match(/rgba\(([^)]+)\)/)[1].split(",");
+          red = parseInt(rgbaValues[0], 10);
+          green = parseInt(rgbaValues[1], 10);
+          blue = parseInt(rgbaValues[2], 10);
+          alpha = parseFloat(rgbaValues[3]);
+        } else if (cleanColor.startsWith("rgb")) {
+          const rgbValues = cleanColor.match(/rgb\(([^)]+)\)/)[1].split(",");
+          red = parseInt(rgbValues[0], 10);
+          green = parseInt(rgbValues[1], 10);
+          blue = parseInt(rgbValues[2], 10);
+        } else if (cleanColor.startsWith("hsla")) {
+          const hslaValues = cleanColor.match(/hsla\(([^)]+)\)/)[1].split(",");
+          const h = parseFloat(hslaValues[0]);
+          const s = parseFloat(hslaValues[1].replace("%", "")) / 100;
+          const l = parseFloat(hslaValues[2].replace("%", "")) / 100;
+          alpha = parseFloat(hslaValues[3]);
+          const C = (1 - Math.abs(2 * l - 1)) * s;
+          const X = C * (1 - Math.abs(h / 60 % 2 - 1));
+          const m = l - C / 2;
+          let R;
+          let G;
+          let B;
+          if (h >= 0 && h < 60) {
+            R = C;
+            G = X;
+            B = 0;
+          } else if (h >= 60 && h < 120) {
+            R = X;
+            G = C;
+            B = 0;
+          } else if (h >= 120 && h < 180) {
+            R = 0;
+            G = C;
+            B = X;
+          } else if (h >= 180 && h < 240) {
+            R = 0;
+            G = X;
+            B = C;
+          } else if (h >= 240 && h < 300) {
+            R = X;
+            G = 0;
+            B = C;
+          } else {
+            R = C;
+            G = 0;
+            B = X;
+          }
+          red = Math.round((R + m) * 255);
+          green = Math.round((G + m) * 255);
+          blue = Math.round((B + m) * 255);
+        } else if (cleanColor.startsWith("hsl")) {
+          const hslValues = cleanColor.match(/hsl\(([^)]+)\)/)[1].split(",");
+          const h = parseFloat(hslValues[0]);
+          const s = parseFloat(hslValues[1].replace("%", "")) / 100;
+          const l = parseFloat(hslValues[2].replace("%", "")) / 100;
+          const C = (1 - Math.abs(2 * l - 1)) * s;
+          const X = C * (1 - Math.abs(h / 60 % 2 - 1));
+          const m = l - C / 2;
+          let R;
+          let G;
+          let B;
+          if (h >= 0 && h < 60) {
+            R = C;
+            G = X;
+            B = 0;
+          } else if (h >= 60 && h < 120) {
+            R = X;
+            G = C;
+            B = 0;
+          } else if (h >= 120 && h < 180) {
+            R = 0;
+            G = C;
+            B = X;
+          } else if (h >= 180 && h < 240) {
+            R = 0;
+            G = X;
+            B = C;
+          } else if (h >= 240 && h < 300) {
+            R = X;
+            G = 0;
+            B = C;
+          } else {
+            R = C;
+            G = 0;
+            B = X;
+          }
+          red = Math.round((R + m) * 255);
+          green = Math.round((G + m) * 255);
+          blue = Math.round((B + m) * 255);
+        }
+        if (Number.isNaN(red) || Number.isNaN(green) || Number.isNaN(blue)) {
+          throw new Error(`Invalid color in [ix2/shared/utils/normalizeColor.js] '${inputColor}'`);
+        }
+        return {
+          red,
+          green,
+          blue,
+          alpha
+        };
+      }
+    }
+  });
+
+  // packages/systems/ix2/plugins/IX2Variable.js
+  var require_IX2Variable = __commonJS({
+    "packages/systems/ix2/plugins/IX2Variable.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.renderPlugin = exports.getPluginOrigin = exports.getPluginDuration = exports.getPluginDestination = exports.getPluginConfig = exports.createPluginInstance = exports.clearPlugin = void 0;
+      var _normalizeColor = require_normalizeColor();
+      var getPluginConfig2 = (actionItemConfig, key) => {
+        return actionItemConfig.value[key];
+      };
+      exports.getPluginConfig = getPluginConfig2;
+      var getPluginDuration3 = () => {
+        return null;
+      };
+      exports.getPluginDuration = getPluginDuration3;
+      var getPluginOrigin2 = (refState2, actionItem) => {
+        if (refState2) {
+          return refState2;
+        }
+        const destination = actionItem.config.value;
+        const objectId = actionItem.config.target.objectId;
+        const computedValue = getComputedStyle(document.documentElement).getPropertyValue(objectId);
+        if (destination.size != null) {
+          return {
+            size: parseInt(computedValue, 10)
+          };
+        }
+        if (destination.red != null && destination.green != null && destination.blue != null) {
+          return (0, _normalizeColor.normalizeColor)(computedValue);
+        }
+      };
+      exports.getPluginOrigin = getPluginOrigin2;
+      var getPluginDestination2 = (actionItemConfig) => {
+        return actionItemConfig.value;
+      };
+      exports.getPluginDestination = getPluginDestination2;
+      var createPluginInstance3 = () => {
+        return null;
+      };
+      exports.createPluginInstance = createPluginInstance3;
+      var renderPlugin2 = (_, refState2, actionItem) => {
+        const objectId = actionItem.config.target.objectId;
+        const unit = actionItem.config.value.unit;
+        const {
+          PLUGIN_VARIABLE: props
+        } = refState2;
+        const {
+          size: size2,
+          red,
+          green,
+          blue,
+          alpha
+        } = props;
+        let value;
+        if (size2 != null) {
+          value = size2 + unit;
+        }
+        if (red != null && blue != null && green != null && alpha != null) {
+          value = `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+        }
+        if (value != null) {
+          document.documentElement.style.setProperty(objectId, value);
+        }
+      };
+      exports.renderPlugin = renderPlugin2;
+      var clearPlugin2 = (ref, actionItem) => {
+        const objectId = actionItem.config.target.objectId;
+        document.documentElement.style.removeProperty(objectId);
+      };
+      exports.clearPlugin = clearPlugin2;
+    }
+  });
+
+  // packages/systems/ix2/plugins/index.js
+  var require_plugins = __commonJS({
+    "packages/systems/ix2/plugins/index.js"(exports) {
+      "use strict";
+      var _interopRequireWildcard = require_interopRequireWildcard().default;
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.pluginMethodMap = void 0;
+      var _sharedConstants = (init_shared_constants(), __toCommonJS(shared_constants_exports));
+      var lottie = _interopRequireWildcard(require_IX2Lottie());
+      var spline = _interopRequireWildcard(require_IX2Spline());
+      var variable = _interopRequireWildcard(require_IX2Variable());
+      var pluginMethodMap2 = exports.pluginMethodMap = /* @__PURE__ */ new Map([[_sharedConstants.ActionTypeConsts.PLUGIN_LOTTIE, {
+        ...lottie
+      }], [_sharedConstants.ActionTypeConsts.PLUGIN_SPLINE, {
+        ...spline
+      }], [_sharedConstants.ActionTypeConsts.PLUGIN_VARIABLE, {
+        ...variable
+      }]]);
+    }
+  });
+
+  // packages/systems/ix2/shared/logic/IX2VanillaPlugins.ts
+  var IX2VanillaPlugins_exports = {};
+  __export(IX2VanillaPlugins_exports, {
+    clearPlugin: () => clearPlugin,
+    createPluginInstance: () => createPluginInstance,
+    getPluginConfig: () => getPluginConfig,
+    getPluginDestination: () => getPluginDestination,
+    getPluginDuration: () => getPluginDuration,
+    getPluginOrigin: () => getPluginOrigin,
+    isPluginType: () => isPluginType,
+    renderPlugin: () => renderPlugin
+  });
+  function isPluginType(actionTypeId) {
+    return import_plugins.pluginMethodMap.has(actionTypeId);
+  }
+  var import_plugins, pluginMethod, getPluginConfig, getPluginOrigin, getPluginDuration, getPluginDestination, createPluginInstance, renderPlugin, clearPlugin;
+  var init_IX2VanillaPlugins = __esm({
+    "packages/systems/ix2/shared/logic/IX2VanillaPlugins.ts"() {
+      "use strict";
+      init_IX2BrowserSupport();
+      import_plugins = __toESM(require_plugins());
+      pluginMethod = (methodName) => (actionTypeId) => {
+        if (!IS_BROWSER_ENV) {
+          return () => null;
+        }
+        const plugin = import_plugins.pluginMethodMap.get(actionTypeId);
+        if (!plugin) {
+          throw new Error(`IX2 no plugin configured for: ${actionTypeId}`);
+        }
+        const method = plugin[methodName];
+        if (!method) {
+          throw new Error(`IX2 invalid plugin method: ${methodName}`);
+        }
+        return method;
+      };
+      getPluginConfig = pluginMethod("getPluginConfig");
+      getPluginOrigin = pluginMethod("getPluginOrigin");
+      getPluginDuration = pluginMethod("getPluginDuration");
+      getPluginDestination = pluginMethod("getPluginDestination");
+      createPluginInstance = pluginMethod("createPluginInstance");
+      renderPlugin = pluginMethod("renderPlugin");
+      clearPlugin = pluginMethod("clearPlugin");
+    }
+  });
+
+  // node_modules/lodash/defaultTo.js
+  var require_defaultTo = __commonJS({
+    "node_modules/lodash/defaultTo.js"(exports, module2) {
+      function defaultTo3(value, defaultValue) {
+        return value == null || value !== value ? defaultValue : value;
+      }
+      module2.exports = defaultTo3;
+    }
+  });
+
+  // node_modules/lodash/_arrayReduce.js
+  var require_arrayReduce = __commonJS({
+    "node_modules/lodash/_arrayReduce.js"(exports, module2) {
+      function arrayReduce(array, iteratee, accumulator, initAccum) {
+        var index = -1, length = array == null ? 0 : array.length;
+        if (initAccum && length) {
+          accumulator = array[++index];
+        }
+        while (++index < length) {
+          accumulator = iteratee(accumulator, array[index], index, array);
+        }
+        return accumulator;
+      }
+      module2.exports = arrayReduce;
+    }
+  });
+
+  // node_modules/lodash/_createBaseFor.js
+  var require_createBaseFor = __commonJS({
+    "node_modules/lodash/_createBaseFor.js"(exports, module2) {
+      function createBaseFor(fromRight) {
+        return function(object, iteratee, keysFunc) {
+          var index = -1, iterable = Object(object), props = keysFunc(object), length = props.length;
+          while (length--) {
+            var key = props[fromRight ? length : ++index];
+            if (iteratee(iterable[key], key, iterable) === false) {
+              break;
+            }
+          }
+          return object;
+        };
+      }
+      module2.exports = createBaseFor;
+    }
+  });
+
+  // node_modules/lodash/_baseFor.js
+  var require_baseFor = __commonJS({
+    "node_modules/lodash/_baseFor.js"(exports, module2) {
+      var createBaseFor = require_createBaseFor();
+      var baseFor = createBaseFor();
+      module2.exports = baseFor;
+    }
+  });
+
+  // node_modules/lodash/_baseForOwn.js
+  var require_baseForOwn = __commonJS({
+    "node_modules/lodash/_baseForOwn.js"(exports, module2) {
+      var baseFor = require_baseFor();
+      var keys = require_keys();
+      function baseForOwn(object, iteratee) {
+        return object && baseFor(object, iteratee, keys);
+      }
+      module2.exports = baseForOwn;
+    }
+  });
+
+  // node_modules/lodash/_createBaseEach.js
+  var require_createBaseEach = __commonJS({
+    "node_modules/lodash/_createBaseEach.js"(exports, module2) {
+      var isArrayLike = require_isArrayLike();
+      function createBaseEach(eachFunc, fromRight) {
+        return function(collection, iteratee) {
+          if (collection == null) {
+            return collection;
+          }
+          if (!isArrayLike(collection)) {
+            return eachFunc(collection, iteratee);
+          }
+          var length = collection.length, index = fromRight ? length : -1, iterable = Object(collection);
+          while (fromRight ? index-- : ++index < length) {
+            if (iteratee(iterable[index], index, iterable) === false) {
+              break;
+            }
+          }
+          return collection;
+        };
+      }
+      module2.exports = createBaseEach;
+    }
+  });
+
+  // node_modules/lodash/_baseEach.js
+  var require_baseEach = __commonJS({
+    "node_modules/lodash/_baseEach.js"(exports, module2) {
+      var baseForOwn = require_baseForOwn();
+      var createBaseEach = require_createBaseEach();
+      var baseEach = createBaseEach(baseForOwn);
+      module2.exports = baseEach;
+    }
+  });
+
+  // node_modules/lodash/_baseReduce.js
+  var require_baseReduce = __commonJS({
+    "node_modules/lodash/_baseReduce.js"(exports, module2) {
+      function baseReduce(collection, iteratee, accumulator, initAccum, eachFunc) {
+        eachFunc(collection, function(value, index, collection2) {
+          accumulator = initAccum ? (initAccum = false, value) : iteratee(accumulator, value, index, collection2);
+        });
+        return accumulator;
+      }
+      module2.exports = baseReduce;
+    }
+  });
+
+  // node_modules/lodash/reduce.js
+  var require_reduce = __commonJS({
+    "node_modules/lodash/reduce.js"(exports, module2) {
+      var arrayReduce = require_arrayReduce();
+      var baseEach = require_baseEach();
+      var baseIteratee = require_baseIteratee();
+      var baseReduce = require_baseReduce();
+      var isArray2 = require_isArray();
+      function reduce3(collection, iteratee, accumulator) {
+        var func = isArray2(collection) ? arrayReduce : baseReduce, initAccum = arguments.length < 3;
+        return func(collection, baseIteratee(iteratee, 4), accumulator, initAccum, baseEach);
+      }
+      module2.exports = reduce3;
+    }
+  });
+
+  // node_modules/lodash/findLastIndex.js
+  var require_findLastIndex = __commonJS({
+    "node_modules/lodash/findLastIndex.js"(exports, module2) {
+      var baseFindIndex = require_baseFindIndex();
+      var baseIteratee = require_baseIteratee();
+      var toInteger = require_toInteger();
+      var nativeMax = Math.max;
+      var nativeMin = Math.min;
+      function findLastIndex(array, predicate, fromIndex) {
+        var length = array == null ? 0 : array.length;
+        if (!length) {
+          return -1;
+        }
+        var index = length - 1;
+        if (fromIndex !== void 0) {
+          index = toInteger(fromIndex);
+          index = fromIndex < 0 ? nativeMax(length + index, 0) : nativeMin(index, length - 1);
+        }
+        return baseFindIndex(array, baseIteratee(predicate, 3), index, true);
+      }
+      module2.exports = findLastIndex;
+    }
+  });
+
+  // node_modules/lodash/findLast.js
+  var require_findLast = __commonJS({
+    "node_modules/lodash/findLast.js"(exports, module2) {
+      var createFind = require_createFind();
+      var findLastIndex = require_findLastIndex();
+      var findLast2 = createFind(findLastIndex);
+      module2.exports = findLast2;
+    }
+  });
+
+  // packages/systems/ix2/shared/logic/shallowEqual.ts
+  function is(x, y) {
+    if (x === y) {
+      return x !== 0 || y !== 0 || 1 / x === 1 / y;
+    }
+    return x !== x && y !== y;
+  }
+  function shallowEqual(objA, objB) {
+    if (is(objA, objB)) {
+      return true;
+    }
+    if (typeof objA !== "object" || objA === null || typeof objB !== "object" || objB === null) {
+      return false;
+    }
+    const keysA = Object.keys(objA);
+    const keysB = Object.keys(objB);
+    if (keysA.length !== keysB.length) {
+      return false;
+    }
+    for (let i = 0; i < keysA.length; i++) {
+      if (!Object.hasOwn(
+        objB,
+        // @ts-expect-error - TS2345 - Argument of type 'string | undefined' is not assignable to parameter of type 'PropertyKey'.
+        keysA[i]
+      ) || // @ts-expect-error - TS2538 - Type 'undefined' cannot be used as an index type. | TS2538 - Type 'undefined' cannot be used as an index type.
+      !is(objA[keysA[i]], objB[keysA[i]])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  var shallowEqual_default;
+  var init_shallowEqual = __esm({
+    "packages/systems/ix2/shared/logic/shallowEqual.ts"() {
+      "use strict";
+      shallowEqual_default = shallowEqual;
+    }
+  });
+
+  // packages/systems/ix2/shared/logic/IX2VanillaUtils.ts
+  var IX2VanillaUtils_exports = {};
+  __export(IX2VanillaUtils_exports, {
+    cleanupHTMLElement: () => cleanupHTMLElement,
+    clearAllStyles: () => clearAllStyles,
+    clearObjectCache: () => clearObjectCache,
+    getActionListProgress: () => getActionListProgress,
+    getAffectedElements: () => getAffectedElements,
+    getComputedStyle: () => getComputedStyle2,
+    getDestinationValues: () => getDestinationValues,
+    getElementId: () => getElementId,
+    getInstanceId: () => getInstanceId,
+    getInstanceOrigin: () => getInstanceOrigin,
+    getItemConfigByKey: () => getItemConfigByKey,
+    getMaxDurationItemIndex: () => getMaxDurationItemIndex,
+    getNamespacedParameterId: () => getNamespacedParameterId,
+    getRenderType: () => getRenderType,
+    getStyleProp: () => getStyleProp,
+    mediaQueriesEqual: () => mediaQueriesEqual,
+    observeStore: () => observeStore,
+    reduceListToGroup: () => reduceListToGroup,
+    reifyState: () => reifyState,
+    renderHTMLElement: () => renderHTMLElement,
+    shallowEqual: () => shallowEqual_default,
+    shouldAllowMediaQuery: () => shouldAllowMediaQuery,
+    shouldNamespaceEventParameter: () => shouldNamespaceEventParameter,
+    stringifyTarget: () => stringifyTarget
+  });
+  function clearObjectCache() {
+    objectCache.clear();
+  }
+  function getInstanceId() {
+    return "i" + instanceCount++;
+  }
+  function getElementId(ixElements3, ref) {
+    for (const key in ixElements3) {
+      const ixEl = ixElements3[key];
+      if (ixEl && ixEl.ref === ref) {
+        return ixEl.id;
+      }
+    }
+    return "e" + elementCount++;
+  }
+  function reifyState({
+    events,
+    actionLists,
+    site
+  } = {}) {
+    const eventTypeMap = (0, import_reduce.default)(
+      events,
+      (result2, event) => {
+        const { eventTypeId } = event;
+        if (!result2[eventTypeId]) {
+          result2[eventTypeId] = {};
+        }
+        result2[eventTypeId][event.id] = event;
+        return result2;
+      },
+      {}
+    );
+    let mediaQueries = site && site.mediaQueries;
+    let mediaQueryKeys = [];
+    if (mediaQueries) {
+      mediaQueryKeys = mediaQueries.map((mq) => mq.key);
+    } else {
+      mediaQueries = [];
+      console.warn(`IX2 missing mediaQueries in site data`);
+    }
+    return {
+      ixData: {
+        events,
+        actionLists,
+        eventTypeMap,
+        mediaQueries,
+        mediaQueryKeys
+      }
+    };
+  }
+  function observeStore({
+    // @ts-expect-error - TS7031 - Binding element 'store' implicitly has an 'any' type.
+    store,
+    // @ts-expect-error - TS7031 - Binding element 'select' implicitly has an 'any' type.
+    select,
+    // @ts-expect-error - TS7031 - Binding element 'onChange' implicitly has an 'any' type.
+    onChange,
+    comparator = strictEqual
+  }) {
+    const { getState, subscribe } = store;
+    const unsubscribe = subscribe(handleChange);
+    let currentState = select(getState());
+    function handleChange() {
+      const nextState = select(getState());
+      if (nextState == null) {
+        unsubscribe();
+        return;
+      }
+      if (!comparator(nextState, currentState)) {
+        currentState = nextState;
+        onChange(currentState, store);
+      }
+    }
+    return unsubscribe;
+  }
+  function normalizeTarget(target) {
+    const type = typeof target;
+    if (type === "string") {
+      return { id: target };
+    } else if (target != null && type === "object") {
+      const { id, objectId, selector, selectorGuids, appliesTo, useEventTarget } = target;
+      return { id, objectId, selector, selectorGuids, appliesTo, useEventTarget };
+    }
+    return {};
+  }
+  function getAffectedElements({
+    config,
+    event,
+    eventTarget,
+    elementRoot,
+    elementApi
+  }) {
+    if (!elementApi) {
+      throw new Error("IX2 missing elementApi");
+    }
+    const { targets } = config;
+    if (Array.isArray(targets) && targets.length > 0) {
+      return targets.reduce(
+        (accumulator, target2) => accumulator.concat(
+          getAffectedElements({
+            config: { target: target2 },
+            event,
+            eventTarget,
+            elementRoot,
+            elementApi
+          })
+        ),
+        []
+      );
+    }
+    const {
+      getValidDocument: getValidDocument2,
+      getQuerySelector: getQuerySelector2,
+      queryDocument: queryDocument2,
+      getChildElements: getChildElements2,
+      getSiblingElements: getSiblingElements2,
+      matchSelector: matchSelector2,
+      elementContains: elementContains2,
+      isSiblingNode: isSiblingNode2
+    } = elementApi;
+    const { target } = config;
+    if (!target) {
+      return [];
+    }
+    const {
+      id,
+      objectId,
+      selector,
+      selectorGuids,
+      appliesTo,
+      useEventTarget
+    } = normalizeTarget(target);
+    if (objectId) {
+      const ref = objectCache.has(objectId) ? objectCache.get(objectId) : objectCache.set(objectId, {}).get(objectId);
+      return [ref];
+    }
+    if (appliesTo === EventAppliesTo.PAGE) {
+      const doc = getValidDocument2(id);
+      return doc ? [doc] : [];
+    }
+    const overrides = event?.action?.config?.affectedElements ?? {};
+    const override = overrides[id || selector] || {};
+    const validOverride = Boolean(override.id || override.selector);
+    let limitAffectedElements;
+    let baseSelector;
+    let finalSelector;
+    const eventTargetSelector = event && getQuerySelector2(normalizeTarget(event.target));
+    if (validOverride) {
+      limitAffectedElements = override.limitAffectedElements;
+      baseSelector = eventTargetSelector;
+      finalSelector = getQuerySelector2(override);
+    } else {
+      baseSelector = finalSelector = getQuerySelector2({
+        id,
+        selector,
+        selectorGuids
+      });
+    }
+    if (event && useEventTarget) {
+      const eventTargets = eventTarget && (finalSelector || useEventTarget === true) ? [eventTarget] : queryDocument2(eventTargetSelector);
+      if (finalSelector) {
+        if (useEventTarget === PARENT2) {
+          return queryDocument2(finalSelector).filter(
+            (parentElement) => eventTargets.some(
+              (targetElement) => elementContains2(parentElement, targetElement)
+            )
+          );
+        }
+        if (useEventTarget === CHILDREN2) {
+          return queryDocument2(finalSelector).filter(
+            (childElement) => eventTargets.some(
+              (targetElement) => elementContains2(targetElement, childElement)
+            )
+          );
+        }
+        if (useEventTarget === SIBLINGS2) {
+          return queryDocument2(finalSelector).filter(
+            (siblingElement) => eventTargets.some(
+              (targetElement) => isSiblingNode2(targetElement, siblingElement)
+            )
+          );
+        }
+      }
+      return eventTargets;
+    }
+    if (baseSelector == null || finalSelector == null) {
+      return [];
+    }
+    if (IS_BROWSER_ENV && elementRoot) {
+      return queryDocument2(finalSelector).filter(
+        (element) => elementRoot.contains(element)
+      );
+    }
+    if (limitAffectedElements === CHILDREN2) {
+      return queryDocument2(baseSelector, finalSelector);
+    } else if (limitAffectedElements === IMMEDIATE_CHILDREN2) {
+      return getChildElements2(queryDocument2(baseSelector)).filter(
+        matchSelector2(finalSelector)
+      );
+    } else if (limitAffectedElements === SIBLINGS2) {
+      return getSiblingElements2(queryDocument2(baseSelector)).filter(
+        matchSelector2(finalSelector)
+      );
+    } else {
+      return queryDocument2(finalSelector);
+    }
+  }
+  function getComputedStyle2({ element, actionItem }) {
+    if (!IS_BROWSER_ENV) {
+      return {};
+    }
+    const { actionTypeId } = actionItem;
+    switch (actionTypeId) {
+      case STYLE_SIZE2:
+      case STYLE_BACKGROUND_COLOR:
+      case STYLE_BORDER:
+      case STYLE_TEXT_COLOR:
+      case GENERAL_DISPLAY:
+        return window.getComputedStyle(element);
+      default:
+        return {};
+    }
+  }
+  function getInstanceOrigin(element, refState2 = {}, computedStyle = {}, actionItem, elementApi) {
+    const { getStyle: getStyle2 } = elementApi;
+    const { actionTypeId } = actionItem;
+    if (isPluginType(actionTypeId)) {
+      return getPluginOrigin(actionTypeId)(refState2[actionTypeId], actionItem);
+    }
+    switch (actionItem.actionTypeId) {
+      case TRANSFORM_MOVE2:
+      case TRANSFORM_SCALE2:
+      case TRANSFORM_ROTATE2:
+      case TRANSFORM_SKEW2: {
+        return (
+          // @ts-expect-error - TS7053 - Element implicitly has an 'any' type because expression of type '"TRANSFORM_MOVE" | "TRANSFORM_SCALE" | "TRANSFORM_ROTATE" | "TRANSFORM_SKEW"' can't be used to index type '{}'.
+          refState2[actionItem.actionTypeId] || transformDefaults[actionItem.actionTypeId]
+        );
+      }
+      case STYLE_FILTER2:
+        return getFilterDefaults(
+          // @ts-expect-error - TS7053 - Element implicitly has an 'any' type because expression of type '"STYLE_FILTER"' can't be used to index type '{}'.
+          refState2[actionItem.actionTypeId],
+          actionItem.config.filters
+        );
+      case STYLE_FONT_VARIATION2:
+        return getFontVariationDefaults(
+          // @ts-expect-error - TS7053 - Element implicitly has an 'any' type because expression of type '"STYLE_FONT_VARIATION"' can't be used to index type '{}'.
+          refState2[actionItem.actionTypeId],
+          actionItem.config.fontVariations
+        );
+      case STYLE_OPACITY:
+        return { value: (0, import_defaultTo.default)(parseFloat(getStyle2(element, OPACITY2)), 1) };
+      case STYLE_SIZE2: {
+        const inlineWidth = getStyle2(element, WIDTH2);
+        const inlineHeight = getStyle2(element, HEIGHT2);
+        let widthValue;
+        let heightValue;
+        if (actionItem.config.widthUnit === AUTO2) {
+          widthValue = pxValueRegex.test(inlineWidth) ? parseFloat(inlineWidth) : (
+            // @ts-expect-error - TS18047 - 'computedStyle' is possibly 'null'.
+            parseFloat(computedStyle.width)
+          );
+        } else {
+          widthValue = (0, import_defaultTo.default)(
+            parseFloat(inlineWidth),
+            // @ts-expect-error - TS18047 - 'computedStyle' is possibly 'null'.
+            parseFloat(computedStyle.width)
+          );
+        }
+        if (actionItem.config.heightUnit === AUTO2) {
+          heightValue = pxValueRegex.test(inlineHeight) ? parseFloat(inlineHeight) : (
+            // @ts-expect-error - TS18047 - 'computedStyle' is possibly 'null'.
+            parseFloat(computedStyle.height)
+          );
+        } else {
+          heightValue = (0, import_defaultTo.default)(
+            parseFloat(inlineHeight),
+            // @ts-expect-error - TS18047 - 'computedStyle' is possibly 'null'.
+            parseFloat(computedStyle.height)
+          );
+        }
+        return {
+          widthValue,
+          heightValue
+        };
+      }
+      case STYLE_BACKGROUND_COLOR:
+      case STYLE_BORDER:
+      case STYLE_TEXT_COLOR:
+        return parseColor({
+          element,
+          actionTypeId: actionItem.actionTypeId,
+          computedStyle,
+          getStyle: getStyle2
+        });
+      case GENERAL_DISPLAY:
+        return {
+          // @ts-expect-error - TS18047 - 'computedStyle' is possibly 'null'.
+          value: (0, import_defaultTo.default)(getStyle2(element, DISPLAY2), computedStyle.display)
+        };
+      case OBJECT_VALUE:
+        return refState2[actionItem.actionTypeId] || { value: 0 };
+      default: {
+        return;
+      }
+    }
+  }
+  function getDestinationValues({
+    element,
+    actionItem,
+    elementApi
+  }) {
+    if (isPluginType(actionItem.actionTypeId)) {
+      return getPluginDestination(actionItem.actionTypeId)(actionItem.config);
+    }
+    switch (actionItem.actionTypeId) {
+      case TRANSFORM_MOVE2:
+      case TRANSFORM_SCALE2:
+      case TRANSFORM_ROTATE2:
+      case TRANSFORM_SKEW2: {
+        const { xValue, yValue, zValue } = actionItem.config;
+        return { xValue, yValue, zValue };
+      }
+      case STYLE_SIZE2: {
+        const { getStyle: getStyle2, setStyle: setStyle2, getProperty: getProperty2 } = elementApi;
+        const { widthUnit, heightUnit } = actionItem.config;
+        let { widthValue, heightValue } = actionItem.config;
+        if (!IS_BROWSER_ENV) {
+          return { widthValue, heightValue };
+        }
+        if (widthUnit === AUTO2) {
+          const temp = getStyle2(element, WIDTH2);
+          setStyle2(element, WIDTH2, "");
+          widthValue = getProperty2(element, "offsetWidth");
+          setStyle2(element, WIDTH2, temp);
+        }
+        if (heightUnit === AUTO2) {
+          const temp = getStyle2(element, HEIGHT2);
+          setStyle2(element, HEIGHT2, "");
+          heightValue = getProperty2(element, "offsetHeight");
+          setStyle2(element, HEIGHT2, temp);
+        }
+        return { widthValue, heightValue };
+      }
+      case STYLE_BACKGROUND_COLOR:
+      case STYLE_BORDER:
+      case STYLE_TEXT_COLOR: {
+        const { rValue, gValue, bValue, aValue, globalSwatchId } = actionItem.config;
+        if (globalSwatchId && globalSwatchId.startsWith("--")) {
+          const { getStyle: getStyle2 } = elementApi;
+          const value = getStyle2(element, globalSwatchId);
+          const normalizedValue = (0, import_normalizeColor.normalizeColor)(value);
+          return {
+            rValue: normalizedValue.red,
+            gValue: normalizedValue.green,
+            bValue: normalizedValue.blue,
+            aValue: normalizedValue.alpha
+          };
+        }
+        return { rValue, gValue, bValue, aValue };
+      }
+      case STYLE_FILTER2: {
+        return actionItem.config.filters.reduce(
+          reduceFilters,
+          {}
+        );
+      }
+      case STYLE_FONT_VARIATION2: {
+        return actionItem.config.fontVariations.reduce(
+          reduceFontVariations,
+          {}
+        );
+      }
+      default: {
+        const { value } = actionItem.config;
+        return { value };
+      }
+    }
+  }
+  function getRenderType(actionTypeId) {
+    if (/^TRANSFORM_/.test(actionTypeId)) {
+      return RENDER_TRANSFORM2;
+    }
+    if (/^STYLE_/.test(actionTypeId)) {
+      return RENDER_STYLE2;
+    }
+    if (/^GENERAL_/.test(actionTypeId)) {
+      return RENDER_GENERAL2;
+    }
+    if (/^PLUGIN_/.test(actionTypeId)) {
+      return RENDER_PLUGIN2;
+    }
+  }
+  function getStyleProp(renderType, actionTypeId) {
+    return renderType === RENDER_STYLE2 ? actionTypeId.replace("STYLE_", "").toLowerCase() : null;
+  }
+  function renderHTMLElement(element, refState2, actionState, eventId, actionItem, styleProp, elementApi, renderType, pluginInstance) {
+    switch (renderType) {
+      case RENDER_TRANSFORM2: {
+        return renderTransform(
+          element,
+          refState2,
+          actionState,
+          actionItem,
+          elementApi
+        );
+      }
+      case RENDER_STYLE2: {
+        return renderStyle(
+          element,
+          refState2,
+          actionState,
+          actionItem,
+          styleProp,
+          elementApi
+        );
+      }
+      case RENDER_GENERAL2: {
+        return renderGeneral(element, actionItem, elementApi);
+      }
+      case RENDER_PLUGIN2: {
+        const { actionTypeId } = actionItem;
+        if (isPluginType(actionTypeId)) {
+          return renderPlugin(actionTypeId)(pluginInstance, refState2, actionItem);
+        }
+      }
+    }
+  }
+  function renderTransform(element, refState2, actionState, actionItem, elementApi) {
+    const newTransform = transformKeys.map((actionTypeId) => {
+      const defaults = transformDefaults[actionTypeId];
+      const {
+        xValue = defaults.xValue,
+        yValue = defaults.yValue,
+        zValue = defaults.zValue,
+        xUnit = "",
+        yUnit = "",
+        zUnit = ""
+      } = refState2[actionTypeId] || {};
+      switch (actionTypeId) {
+        case TRANSFORM_MOVE2:
+          return `${TRANSLATE_3D2}(${xValue}${xUnit}, ${yValue}${yUnit}, ${zValue}${zUnit})`;
+        case TRANSFORM_SCALE2:
+          return `${SCALE_3D2}(${xValue}${xUnit}, ${yValue}${yUnit}, ${zValue}${zUnit})`;
+        case TRANSFORM_ROTATE2:
+          return `${ROTATE_X2}(${xValue}${xUnit}) ${ROTATE_Y2}(${yValue}${yUnit}) ${ROTATE_Z2}(${zValue}${zUnit})`;
+        case TRANSFORM_SKEW2:
+          return `${SKEW2}(${xValue}${xUnit}, ${yValue}${yUnit})`;
+        default:
+          return "";
+      }
+    }).join(" ");
+    const { setStyle: setStyle2 } = elementApi;
+    addWillChange(element, TRANSFORM_PREFIXED, elementApi);
+    setStyle2(element, TRANSFORM_PREFIXED, newTransform);
+    if (hasDefined3dTransform(actionItem, actionState)) {
+      setStyle2(element, TRANSFORM_STYLE_PREFIXED, PRESERVE_3D2);
+    }
+  }
+  function renderFilter(element, actionState, actionItemConfig, elementApi) {
+    const filterValue = (0, import_reduce.default)(
+      actionState,
+      (result2, value, type) => `${result2} ${type}(${value}${getFilterUnit(type, actionItemConfig)})`,
+      ""
+    );
+    const { setStyle: setStyle2 } = elementApi;
+    addWillChange(element, FILTER2, elementApi);
+    setStyle2(element, FILTER2, filterValue);
+  }
+  function renderFontVariation(element, actionState, actionItemConfig, elementApi) {
+    const fontVariationValue = (0, import_reduce.default)(
+      actionState,
+      (result2, value, type) => {
+        result2.push(`"${type}" ${value}`);
+        return result2;
+      },
+      []
+    ).join(", ");
+    const { setStyle: setStyle2 } = elementApi;
+    addWillChange(element, FONT_VARIATION_SETTINGS2, elementApi);
+    setStyle2(element, FONT_VARIATION_SETTINGS2, fontVariationValue);
+  }
+  function hasDefined3dTransform({ actionTypeId }, { xValue, yValue, zValue }) {
+    return actionTypeId === TRANSFORM_MOVE2 && zValue !== void 0 || // SCALE_Z
+    actionTypeId === TRANSFORM_SCALE2 && zValue !== void 0 || // ROTATE_X or ROTATE_Y
+    actionTypeId === TRANSFORM_ROTATE2 && (xValue !== void 0 || yValue !== void 0);
+  }
+  function getFirstMatch(regex, value) {
+    const match = regex.exec(value);
+    return match ? match[1] : "";
+  }
+  function parseColor({ element, actionTypeId, computedStyle, getStyle: getStyle2 }) {
+    const prop = colorStyleProps[actionTypeId];
+    const inlineValue = getStyle2(element, prop);
+    const value = rgbValidRegex.test(inlineValue) ? inlineValue : computedStyle[prop];
+    const matches = getFirstMatch(rgbMatchRegex, value).split(COMMA_DELIMITER2);
+    return {
+      // @ts-expect-error - TS2345 - Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      rValue: (0, import_defaultTo.default)(parseInt(matches[0], 10), 255),
+      // @ts-expect-error - TS2345 - Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      gValue: (0, import_defaultTo.default)(parseInt(matches[1], 10), 255),
+      // @ts-expect-error - TS2345 - Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      bValue: (0, import_defaultTo.default)(parseInt(matches[2], 10), 255),
+      // @ts-expect-error - TS2345 - Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      aValue: (0, import_defaultTo.default)(parseFloat(matches[3]), 1)
+    };
+  }
+  function renderStyle(element, refState2, actionState, actionItem, styleProp, elementApi) {
+    const { setStyle: setStyle2 } = elementApi;
+    switch (actionItem.actionTypeId) {
+      case STYLE_SIZE2: {
+        let { widthUnit = "", heightUnit = "" } = actionItem.config;
+        const { widthValue, heightValue } = actionState;
+        if (widthValue !== void 0) {
+          if (widthUnit === AUTO2) {
+            widthUnit = "px";
+          }
+          addWillChange(element, WIDTH2, elementApi);
+          setStyle2(element, WIDTH2, widthValue + widthUnit);
+        }
+        if (heightValue !== void 0) {
+          if (heightUnit === AUTO2) {
+            heightUnit = "px";
+          }
+          addWillChange(element, HEIGHT2, elementApi);
+          setStyle2(element, HEIGHT2, heightValue + heightUnit);
+        }
+        break;
+      }
+      case STYLE_FILTER2: {
+        renderFilter(element, actionState, actionItem.config, elementApi);
+        break;
+      }
+      case STYLE_FONT_VARIATION2: {
+        renderFontVariation(element, actionState, actionItem.config, elementApi);
+        break;
+      }
+      case STYLE_BACKGROUND_COLOR:
+      case STYLE_BORDER:
+      case STYLE_TEXT_COLOR: {
+        const prop = colorStyleProps[actionItem.actionTypeId];
+        const rValue = Math.round(actionState.rValue);
+        const gValue = Math.round(actionState.gValue);
+        const bValue = Math.round(actionState.bValue);
+        const aValue = actionState.aValue;
+        addWillChange(element, prop, elementApi);
+        setStyle2(
+          element,
+          prop,
+          aValue >= 1 ? `rgb(${rValue},${gValue},${bValue})` : `rgba(${rValue},${gValue},${bValue},${aValue})`
+        );
+        break;
+      }
+      default: {
+        const { unit = "" } = actionItem.config;
+        addWillChange(element, styleProp, elementApi);
+        setStyle2(element, styleProp, actionState.value + unit);
+        break;
+      }
+    }
+  }
+  function renderGeneral(element, actionItem, elementApi) {
+    const { setStyle: setStyle2 } = elementApi;
+    switch (actionItem.actionTypeId) {
+      case GENERAL_DISPLAY: {
+        const { value } = actionItem.config;
+        if (value === FLEX2 && IS_BROWSER_ENV) {
+          setStyle2(element, DISPLAY2, FLEX_PREFIXED);
+        } else {
+          setStyle2(element, DISPLAY2, value);
+        }
+        return;
+      }
+    }
+  }
+  function addWillChange(element, prop, elementApi) {
+    if (!IS_BROWSER_ENV) {
+      return;
+    }
+    const validProp = willChangeProps[prop];
+    if (!validProp) {
+      return;
+    }
+    const { getStyle: getStyle2, setStyle: setStyle2 } = elementApi;
+    const value = getStyle2(element, WILL_CHANGE2);
+    if (!value) {
+      setStyle2(element, WILL_CHANGE2, validProp);
+      return;
+    }
+    const values2 = value.split(COMMA_DELIMITER2).map(trim);
+    if (values2.indexOf(validProp) === -1) {
+      setStyle2(
+        element,
+        WILL_CHANGE2,
+        values2.concat(validProp).join(COMMA_DELIMITER2)
+      );
+    }
+  }
+  function removeWillChange(element, prop, elementApi) {
+    if (!IS_BROWSER_ENV) {
+      return;
+    }
+    const validProp = willChangeProps[prop];
+    if (!validProp) {
+      return;
+    }
+    const { getStyle: getStyle2, setStyle: setStyle2 } = elementApi;
+    const value = getStyle2(element, WILL_CHANGE2);
+    if (!value || value.indexOf(validProp) === -1) {
+      return;
+    }
+    setStyle2(
+      element,
+      WILL_CHANGE2,
+      value.split(COMMA_DELIMITER2).map(trim).filter((v) => v !== validProp).join(COMMA_DELIMITER2)
+    );
+  }
+  function clearAllStyles({ store, elementApi }) {
+    const { ixData: ixData2 } = store.getState();
+    const { events = {}, actionLists = {} } = ixData2;
+    Object.keys(events).forEach((eventId) => {
+      const event = events[eventId];
+      const { config } = event.action;
+      const { actionListId } = config;
+      const actionList = actionLists[actionListId];
+      if (actionList) {
+        clearActionListStyles({ actionList, event, elementApi });
+      }
+    });
+    Object.keys(actionLists).forEach((actionListId) => {
+      clearActionListStyles({ actionList: actionLists[actionListId], elementApi });
+    });
+  }
+  function clearActionListStyles({ actionList = {}, event, elementApi }) {
+    const { actionItemGroups, continuousParameterGroups } = actionList;
+    actionItemGroups && // @ts-expect-error - TS7006 - Parameter 'actionGroup' implicitly has an 'any' type.
+    actionItemGroups.forEach((actionGroup) => {
+      clearActionGroupStyles({ actionGroup, event, elementApi });
+    });
+    continuousParameterGroups && // @ts-expect-error - TS7006 - Parameter 'paramGroup' implicitly has an 'any' type.
+    continuousParameterGroups.forEach((paramGroup) => {
+      const { continuousActionGroups } = paramGroup;
+      continuousActionGroups.forEach((actionGroup) => {
+        clearActionGroupStyles({ actionGroup, event, elementApi });
+      });
+    });
+  }
+  function clearActionGroupStyles({ actionGroup, event, elementApi }) {
+    const { actionItems } = actionGroup;
+    actionItems.forEach((actionItem) => {
+      const { actionTypeId, config } = actionItem;
+      let clearElement;
+      if (isPluginType(actionTypeId)) {
+        clearElement = (ref) => clearPlugin(actionTypeId)(ref, actionItem);
+      } else {
+        clearElement = processElementByType({
+          effect: clearStyleProp,
+          actionTypeId,
+          elementApi
+        });
+      }
+      getAffectedElements({ config, event, elementApi }).forEach(clearElement);
+    });
+  }
+  function cleanupHTMLElement(element, actionItem, elementApi) {
+    const { setStyle: setStyle2, getStyle: getStyle2 } = elementApi;
+    const { actionTypeId } = actionItem;
+    if (actionTypeId === STYLE_SIZE2) {
+      const { config } = actionItem;
+      if (config.widthUnit === AUTO2) {
+        setStyle2(element, WIDTH2, "");
+      }
+      if (config.heightUnit === AUTO2) {
+        setStyle2(element, HEIGHT2, "");
+      }
+    }
+    if (getStyle2(element, WILL_CHANGE2)) {
+      processElementByType({ effect: removeWillChange, actionTypeId, elementApi })(
+        element
+      );
+    }
+  }
+  function clearStyleProp(element, prop, elementApi) {
+    const { setStyle: setStyle2 } = elementApi;
+    removeWillChange(element, prop, elementApi);
+    setStyle2(element, prop, "");
+    if (prop === TRANSFORM_PREFIXED) {
+      setStyle2(element, TRANSFORM_STYLE_PREFIXED, "");
+    }
+  }
+  function getMaxDurationItemIndex(actionItems) {
+    let maxDuration = 0;
+    let resultIndex = 0;
+    actionItems.forEach((actionItem, index) => {
+      const { config } = actionItem;
+      const total = config.delay + config.duration;
+      if (total >= maxDuration) {
+        maxDuration = total;
+        resultIndex = index;
+      }
+    });
+    return resultIndex;
+  }
+  function getActionListProgress(actionList, instance) {
+    const { actionItemGroups, useFirstGroupAsInitialState } = actionList;
+    const { actionItem: instanceItem, verboseTimeElapsed = 0 } = instance;
+    let totalDuration = 0;
+    let elapsedDuration = 0;
+    actionItemGroups.forEach((group, index) => {
+      if (useFirstGroupAsInitialState && index === 0) {
+        return;
+      }
+      const { actionItems } = group;
+      const carrierItem = actionItems[getMaxDurationItemIndex(actionItems)];
+      const { config, actionTypeId } = carrierItem;
+      if (instanceItem.id === carrierItem.id) {
+        elapsedDuration = totalDuration + verboseTimeElapsed;
+      }
+      const duration = getRenderType(actionTypeId) === RENDER_GENERAL2 ? 0 : config.duration;
+      totalDuration += config.delay + duration;
+    });
+    return totalDuration > 0 ? optimizeFloat(elapsedDuration / totalDuration) : 0;
+  }
+  function reduceListToGroup({
+    actionList,
+    actionItemId,
+    rawData
+  }) {
+    const { actionItemGroups, continuousParameterGroups } = actionList;
+    const newActionItems = [];
+    const takeItemUntilMatch = (actionItem) => {
+      newActionItems.push(
+        (0, import_timm4.mergeIn)(actionItem, ["config"], {
+          delay: 0,
+          duration: 0
+        })
+      );
+      return actionItem.id === actionItemId;
+    };
+    actionItemGroups && actionItemGroups.some(({ actionItems }) => {
+      return actionItems.some(takeItemUntilMatch);
+    });
+    continuousParameterGroups && continuousParameterGroups.some(
+      (paramGroup) => {
+        const { continuousActionGroups } = paramGroup;
+        return continuousActionGroups.some(
+          ({ actionItems }) => {
+            return actionItems.some(takeItemUntilMatch);
+          }
+        );
+      }
+    );
+    return (0, import_timm4.setIn)(rawData, ["actionLists"], {
+      [actionList.id]: {
+        id: actionList.id,
+        actionItemGroups: [
+          {
+            actionItems: newActionItems
+          }
+        ]
+      }
+    });
+  }
+  function shouldNamespaceEventParameter(eventTypeId, { basedOn }) {
+    return eventTypeId === EventTypeConsts.SCROLLING_IN_VIEW && (basedOn === EventBasedOn.ELEMENT || basedOn == null) || eventTypeId === EventTypeConsts.MOUSE_MOVE && basedOn === EventBasedOn.ELEMENT;
+  }
+  function getNamespacedParameterId(eventStateKey, continuousParameterGroupId) {
+    const namespacedParameterId = eventStateKey + COLON_DELIMITER2 + continuousParameterGroupId;
+    return namespacedParameterId;
+  }
+  function shouldAllowMediaQuery(mediaQueries, mediaQueryKey) {
+    if (mediaQueryKey == null) {
+      return true;
+    }
+    return mediaQueries.indexOf(mediaQueryKey) !== -1;
+  }
+  function mediaQueriesEqual(listA, listB) {
+    return shallowEqual_default(listA && listA.sort(), listB && listB.sort());
+  }
+  function stringifyTarget(target) {
+    if (typeof target === "string") {
+      return target;
+    }
+    if (target.pluginElement && target.objectId) {
+      return target.pluginElement + BAR_DELIMITER2 + target.objectId;
+    }
+    if (target.objectId) {
+      return target.objectId;
+    }
+    const { id = "", selector = "", useEventTarget = "" } = target;
+    return id + BAR_DELIMITER2 + selector + BAR_DELIMITER2 + useEventTarget;
+  }
+  var import_defaultTo, import_reduce, import_findLast, import_timm4, import_normalizeColor, BACKGROUND2, TRANSFORM2, TRANSLATE_3D2, SCALE_3D2, ROTATE_X2, ROTATE_Y2, ROTATE_Z2, SKEW2, PRESERVE_3D2, FLEX2, OPACITY2, FILTER2, FONT_VARIATION_SETTINGS2, WIDTH2, HEIGHT2, BACKGROUND_COLOR2, BORDER_COLOR2, COLOR2, CHILDREN2, IMMEDIATE_CHILDREN2, SIBLINGS2, PARENT2, DISPLAY2, WILL_CHANGE2, AUTO2, COMMA_DELIMITER2, COLON_DELIMITER2, BAR_DELIMITER2, RENDER_TRANSFORM2, RENDER_GENERAL2, RENDER_STYLE2, RENDER_PLUGIN2, TRANSFORM_MOVE2, TRANSFORM_SCALE2, TRANSFORM_ROTATE2, TRANSFORM_SKEW2, STYLE_OPACITY, STYLE_FILTER2, STYLE_FONT_VARIATION2, STYLE_SIZE2, STYLE_BACKGROUND_COLOR, STYLE_BORDER, STYLE_TEXT_COLOR, GENERAL_DISPLAY, OBJECT_VALUE, trim, colorStyleProps, willChangeProps, objectCache, instanceCount, elementCount, strictEqual, pxValueRegex, getFilterDefaults, getFontVariationDefaults, reduceFilters, reduceFontVariations, getItemConfigByKey, transformDefaults, filterDefaults, fontVariationDefaults, getFilterUnit, transformKeys, paramCapture, rgbValidRegex, rgbMatchRegex, processElementByType;
+  var init_IX2VanillaUtils = __esm({
+    "packages/systems/ix2/shared/logic/IX2VanillaUtils.ts"() {
+      "use strict";
+      import_defaultTo = __toESM(require_defaultTo());
+      import_reduce = __toESM(require_reduce());
+      import_findLast = __toESM(require_findLast());
+      import_timm4 = __toESM(require_timm());
+      init_shared_constants();
+      init_shallowEqual();
+      init_IX2EasingUtils();
+      import_normalizeColor = __toESM(require_normalizeColor());
+      init_IX2VanillaPlugins();
+      init_IX2BrowserSupport();
+      ({
+        BACKGROUND: BACKGROUND2,
+        TRANSFORM: TRANSFORM2,
+        TRANSLATE_3D: TRANSLATE_3D2,
+        SCALE_3D: SCALE_3D2,
+        ROTATE_X: ROTATE_X2,
+        ROTATE_Y: ROTATE_Y2,
+        ROTATE_Z: ROTATE_Z2,
+        SKEW: SKEW2,
+        PRESERVE_3D: PRESERVE_3D2,
+        FLEX: FLEX2,
+        OPACITY: OPACITY2,
+        FILTER: FILTER2,
+        FONT_VARIATION_SETTINGS: FONT_VARIATION_SETTINGS2,
+        WIDTH: WIDTH2,
+        HEIGHT: HEIGHT2,
+        BACKGROUND_COLOR: BACKGROUND_COLOR2,
+        BORDER_COLOR: BORDER_COLOR2,
+        COLOR: COLOR2,
+        CHILDREN: CHILDREN2,
+        IMMEDIATE_CHILDREN: IMMEDIATE_CHILDREN2,
+        SIBLINGS: SIBLINGS2,
+        PARENT: PARENT2,
+        DISPLAY: DISPLAY2,
+        WILL_CHANGE: WILL_CHANGE2,
+        AUTO: AUTO2,
+        COMMA_DELIMITER: COMMA_DELIMITER2,
+        COLON_DELIMITER: COLON_DELIMITER2,
+        BAR_DELIMITER: BAR_DELIMITER2,
+        RENDER_TRANSFORM: RENDER_TRANSFORM2,
+        RENDER_GENERAL: RENDER_GENERAL2,
+        RENDER_STYLE: RENDER_STYLE2,
+        RENDER_PLUGIN: RENDER_PLUGIN2
+      } = IX2EngineConstants_exports);
+      ({
+        TRANSFORM_MOVE: TRANSFORM_MOVE2,
+        TRANSFORM_SCALE: TRANSFORM_SCALE2,
+        TRANSFORM_ROTATE: TRANSFORM_ROTATE2,
+        TRANSFORM_SKEW: TRANSFORM_SKEW2,
+        STYLE_OPACITY,
+        STYLE_FILTER: STYLE_FILTER2,
+        STYLE_FONT_VARIATION: STYLE_FONT_VARIATION2,
+        STYLE_SIZE: STYLE_SIZE2,
+        STYLE_BACKGROUND_COLOR,
+        STYLE_BORDER,
+        STYLE_TEXT_COLOR,
+        GENERAL_DISPLAY,
+        OBJECT_VALUE
+      } = ActionTypeConsts);
+      trim = (v) => v.trim();
+      colorStyleProps = Object.freeze({
+        [STYLE_BACKGROUND_COLOR]: BACKGROUND_COLOR2,
+        [STYLE_BORDER]: BORDER_COLOR2,
+        [STYLE_TEXT_COLOR]: COLOR2
+      });
+      willChangeProps = Object.freeze({
+        [TRANSFORM_PREFIXED]: TRANSFORM2,
+        [BACKGROUND_COLOR2]: BACKGROUND2,
+        [OPACITY2]: OPACITY2,
+        [FILTER2]: FILTER2,
+        [WIDTH2]: WIDTH2,
+        [HEIGHT2]: HEIGHT2,
+        [FONT_VARIATION_SETTINGS2]: FONT_VARIATION_SETTINGS2
+      });
+      objectCache = /* @__PURE__ */ new Map();
+      instanceCount = 1;
+      elementCount = 1;
+      strictEqual = (a, b) => a === b;
+      pxValueRegex = /px/;
+      getFilterDefaults = (actionState, filters) => (
+        // @ts-expect-error - TS7006 - Parameter 'result' implicitly has an 'any' type. | TS7006 - Parameter 'filter' implicitly has an 'any' type.
+        filters.reduce((result2, filter) => {
+          if (result2[filter.type] == null) {
+            result2[filter.type] = // @ts-expect-error - TS7053 - Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Readonly<{ blur: 0; 'hue-rotate': 0; invert: 0; grayscale: 0; saturate: 100; sepia: 0; contrast: 100; brightness: 100; }>'.
+            filterDefaults[filter.type];
+          }
+          return result2;
+        }, actionState || {})
+      );
+      getFontVariationDefaults = (actionState, fontVariations) => fontVariations.reduce((result2, fontVariation) => {
+        if (result2[fontVariation.type] == null) {
+          result2[fontVariation.type] = // @ts-expect-error - TS7053 - Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Readonly<{ wght: 0; opsz: 0; wdth: 0; slnt: 0; }>'.
+          fontVariationDefaults[fontVariation.type] || // @ts-expect-error - TS2339 - Property 'defaultValue' does not exist on type 'FontVariationItemConfigType'.
+          fontVariation.defaultValue || 0;
+        }
+        return result2;
+      }, actionState || {});
+      reduceFilters = (result2, filter) => {
+        if (filter) {
+          result2[filter.type] = filter.value || 0;
+        }
+        return result2;
+      };
+      reduceFontVariations = (result2, fontVariation) => {
+        if (fontVariation) {
+          result2[fontVariation.type] = fontVariation.value || 0;
+        }
+        return result2;
+      };
+      getItemConfigByKey = (actionTypeId, key, config) => {
+        if (isPluginType(actionTypeId)) {
+          return getPluginConfig(actionTypeId)(config, key);
+        }
+        switch (actionTypeId) {
+          case STYLE_FILTER2: {
+            const filter = (0, import_findLast.default)(config.filters, ({ type }) => type === key);
+            return filter ? filter.value : 0;
+          }
+          case STYLE_FONT_VARIATION2: {
+            const fontVariation = (0, import_findLast.default)(
+              config.fontVariations,
+              ({ type }) => type === key
+            );
+            return fontVariation ? fontVariation.value : 0;
+          }
+          default:
+            return config[key];
+        }
+      };
+      transformDefaults = {
+        [TRANSFORM_MOVE2]: Object.freeze({
+          xValue: 0,
+          yValue: 0,
+          zValue: 0
+        }),
+        [TRANSFORM_SCALE2]: Object.freeze({
+          xValue: 1,
+          yValue: 1,
+          zValue: 1
+        }),
+        [TRANSFORM_ROTATE2]: Object.freeze({
+          xValue: 0,
+          yValue: 0,
+          zValue: 0
+        }),
+        [TRANSFORM_SKEW2]: Object.freeze({
+          xValue: 0,
+          yValue: 0
+        })
+      };
+      filterDefaults = Object.freeze({
+        blur: 0,
+        "hue-rotate": 0,
+        invert: 0,
+        grayscale: 0,
+        saturate: 100,
+        sepia: 0,
+        contrast: 100,
+        brightness: 100
+      });
+      fontVariationDefaults = Object.freeze({
+        wght: 0,
+        opsz: 0,
+        wdth: 0,
+        slnt: 0
+      });
+      getFilterUnit = (filterType, actionItemConfig) => {
+        const filter = (0, import_findLast.default)(
+          actionItemConfig.filters,
+          ({ type }) => type === filterType
+        );
+        if (filter && filter.unit) {
+          return filter.unit;
+        }
+        switch (filterType) {
+          case "blur":
+            return "px";
+          case "hue-rotate":
+            return "deg";
+          default:
+            return "%";
+        }
+      };
+      transformKeys = Object.keys(transformDefaults);
+      paramCapture = "\\(([^)]+)\\)";
+      rgbValidRegex = /^rgb/;
+      rgbMatchRegex = RegExp(`rgba?${paramCapture}`);
+      processElementByType = ({
+        effect,
+        actionTypeId,
+        elementApi
+      }) => (
+        // @ts-expect-error - TS7006 - Parameter 'element' implicitly has an 'any' type.
+        (element) => {
+          switch (actionTypeId) {
+            case TRANSFORM_MOVE2:
+            case TRANSFORM_SCALE2:
+            case TRANSFORM_ROTATE2:
+            case TRANSFORM_SKEW2:
+              effect(element, TRANSFORM_PREFIXED, elementApi);
+              break;
+            case STYLE_FILTER2:
+              effect(element, FILTER2, elementApi);
+              break;
+            case STYLE_FONT_VARIATION2:
+              effect(element, FONT_VARIATION_SETTINGS2, elementApi);
+              break;
+            case STYLE_OPACITY:
+              effect(element, OPACITY2, elementApi);
+              break;
+            case STYLE_SIZE2:
+              effect(element, WIDTH2, elementApi);
+              effect(element, HEIGHT2, elementApi);
+              break;
+            case STYLE_BACKGROUND_COLOR:
+            case STYLE_BORDER:
+            case STYLE_TEXT_COLOR:
+              effect(element, colorStyleProps[actionTypeId], elementApi);
+              break;
+            case GENERAL_DISPLAY:
+              effect(element, DISPLAY2, elementApi);
+              break;
+          }
+        }
+      );
+    }
+  });
+
+  // packages/systems/ix2/shared/index.js
+  var require_shared2 = __commonJS({
+    "packages/systems/ix2/shared/index.js"(exports) {
+      "use strict";
+      var _interopRequireWildcard = require_interopRequireWildcard().default;
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.IX2VanillaUtils = exports.IX2VanillaPlugins = exports.IX2ElementsReducer = exports.IX2Easings = exports.IX2EasingUtils = exports.IX2BrowserSupport = void 0;
+      var IX2BrowserSupport2 = _interopRequireWildcard((init_IX2BrowserSupport(), __toCommonJS(IX2BrowserSupport_exports)));
+      exports.IX2BrowserSupport = IX2BrowserSupport2;
+      var IX2Easings = _interopRequireWildcard((init_IX2Easings(), __toCommonJS(IX2Easings_exports)));
+      exports.IX2Easings = IX2Easings;
+      var IX2EasingUtils2 = _interopRequireWildcard((init_IX2EasingUtils(), __toCommonJS(IX2EasingUtils_exports)));
+      exports.IX2EasingUtils = IX2EasingUtils2;
+      var IX2ElementsReducer2 = _interopRequireWildcard((init_IX2ElementsReducer(), __toCommonJS(IX2ElementsReducer_exports)));
+      exports.IX2ElementsReducer = IX2ElementsReducer2;
+      var IX2VanillaPlugins2 = _interopRequireWildcard((init_IX2VanillaPlugins(), __toCommonJS(IX2VanillaPlugins_exports)));
+      exports.IX2VanillaPlugins = IX2VanillaPlugins2;
+      var IX2VanillaUtils5 = _interopRequireWildcard((init_IX2VanillaUtils(), __toCommonJS(IX2VanillaUtils_exports)));
+      exports.IX2VanillaUtils = IX2VanillaUtils5;
+    }
+  });
+
+  // packages/systems/ix2/engine/reducers/IX2InstancesReducer.ts
+  var import_shared, import_timm5, IX2_RAW_DATA_IMPORTED3, IX2_SESSION_STOPPED4, IX2_INSTANCE_ADDED3, IX2_INSTANCE_STARTED2, IX2_INSTANCE_REMOVED2, IX2_ANIMATION_FRAME_CHANGED3, optimizeFloat2, applyEasing2, createBezierEasing2, RENDER_GENERAL3, getItemConfigByKey2, getRenderType2, getStyleProp2, continuousInstance, timedInstance, ixInstances;
+  var init_IX2InstancesReducer = __esm({
+    "packages/systems/ix2/engine/reducers/IX2InstancesReducer.ts"() {
+      "use strict";
+      init_shared_constants();
+      import_shared = __toESM(require_shared2());
+      import_timm5 = __toESM(require_timm());
+      ({
+        IX2_RAW_DATA_IMPORTED: IX2_RAW_DATA_IMPORTED3,
+        IX2_SESSION_STOPPED: IX2_SESSION_STOPPED4,
+        IX2_INSTANCE_ADDED: IX2_INSTANCE_ADDED3,
+        IX2_INSTANCE_STARTED: IX2_INSTANCE_STARTED2,
+        IX2_INSTANCE_REMOVED: IX2_INSTANCE_REMOVED2,
+        IX2_ANIMATION_FRAME_CHANGED: IX2_ANIMATION_FRAME_CHANGED3
+      } = IX2EngineActionTypes_exports);
+      ({ optimizeFloat: optimizeFloat2, applyEasing: applyEasing2, createBezierEasing: createBezierEasing2 } = import_shared.IX2EasingUtils);
+      ({ RENDER_GENERAL: RENDER_GENERAL3 } = IX2EngineConstants_exports);
+      ({ getItemConfigByKey: getItemConfigByKey2, getRenderType: getRenderType2, getStyleProp: getStyleProp2 } = import_shared.IX2VanillaUtils);
+      continuousInstance = (state, action) => {
+        const {
+          position: lastPosition,
+          parameterId,
+          actionGroups,
+          destinationKeys,
+          smoothing,
+          restingValue,
+          actionTypeId,
+          customEasingFn,
+          skipMotion,
+          skipToValue
+        } = state;
+        const { parameters } = action.payload;
+        let velocity = Math.max(1 - smoothing, 0.01);
+        let paramValue = parameters[parameterId];
+        if (paramValue == null) {
+          velocity = 1;
+          paramValue = restingValue;
+        }
+        const nextPosition = Math.max(paramValue, 0) || 0;
+        const positionDiff = optimizeFloat2(nextPosition - lastPosition);
+        const position = skipMotion ? skipToValue : optimizeFloat2(lastPosition + positionDiff * velocity);
+        const keyframePosition = position * 100;
+        if (position === lastPosition && state.current) {
+          return state;
+        }
+        let fromActionItem;
+        let toActionItem;
+        let positionOffset;
+        let positionRange;
+        for (let i = 0, { length } = actionGroups; i < length; i++) {
+          const { keyframe, actionItems } = actionGroups[i];
+          if (i === 0) {
+            fromActionItem = actionItems[0];
+          }
+          if (keyframePosition >= keyframe) {
+            fromActionItem = actionItems[0];
+            const nextGroup = actionGroups[i + 1];
+            const hasNextItem = nextGroup && keyframePosition !== keyframe;
+            toActionItem = hasNextItem ? nextGroup.actionItems[0] : null;
+            if (hasNextItem) {
+              positionOffset = keyframe / 100;
+              positionRange = (nextGroup.keyframe - keyframe) / 100;
+            }
+          }
+        }
+        const current = {};
+        if (fromActionItem && !toActionItem) {
+          for (let i = 0, { length } = destinationKeys; i < length; i++) {
+            const key = destinationKeys[i];
+            current[key] = getItemConfigByKey2(
+              actionTypeId,
+              key,
+              fromActionItem.config
+            );
+          }
+        } else if (fromActionItem && toActionItem && positionOffset !== void 0 && positionRange !== void 0) {
+          const localPosition = (position - positionOffset) / positionRange;
+          const easing = fromActionItem.config.easing;
+          const eased = applyEasing2(easing, localPosition, customEasingFn);
+          for (let i = 0, { length } = destinationKeys; i < length; i++) {
+            const key = destinationKeys[i];
+            const fromVal = getItemConfigByKey2(
+              actionTypeId,
+              key,
+              fromActionItem.config
+            );
+            const toVal = getItemConfigByKey2(actionTypeId, key, toActionItem.config);
+            const diff = toVal - fromVal;
+            const value = diff * eased + fromVal;
+            current[key] = value;
+          }
+        }
+        return (0, import_timm5.merge)(state, {
+          position,
+          current
+        });
+      };
+      timedInstance = (state, action) => {
+        const {
+          active,
+          origin,
+          start,
+          immediate,
+          renderType,
+          verbose,
+          actionItem,
+          destination,
+          destinationKeys,
+          pluginDuration,
+          instanceDelay,
+          customEasingFn,
+          skipMotion
+        } = state;
+        const easing = actionItem.config.easing;
+        let { duration, delay } = actionItem.config;
+        if (pluginDuration != null) {
+          duration = pluginDuration;
+        }
+        delay = instanceDelay != null ? instanceDelay : delay;
+        if (renderType === RENDER_GENERAL3) {
+          duration = 0;
+        } else if (immediate || skipMotion) {
+          duration = delay = 0;
+        }
+        const { now } = action.payload;
+        if (active && origin) {
+          const delta = now - (start + delay);
+          if (verbose) {
+            const verboseDelta = now - start;
+            const verboseDuration = duration + delay;
+            const verbosePosition = optimizeFloat2(
+              Math.min(Math.max(0, verboseDelta / verboseDuration), 1)
+            );
+            state = (0, import_timm5.set)(
+              state,
+              "verboseTimeElapsed",
+              verboseDuration * verbosePosition
+            );
+          }
+          if (delta < 0) {
+            return state;
+          }
+          const position = optimizeFloat2(Math.min(Math.max(0, delta / duration), 1));
+          const eased = applyEasing2(easing, position, customEasingFn);
+          const newProps = {};
+          let current = null;
+          if (destinationKeys.length) {
+            current = destinationKeys.reduce((result2, key) => {
+              const destValue = destination[key];
+              const originVal = parseFloat(origin[key]) || 0;
+              const diff = parseFloat(destValue) - originVal;
+              const value = diff * eased + originVal;
+              result2[key] = value;
+              return result2;
+            }, {});
+          }
+          newProps.current = current;
+          newProps.position = position;
+          if (position === 1) {
+            newProps.active = false;
+            newProps.complete = true;
+          }
+          return (0, import_timm5.merge)(state, newProps);
+        }
+        return state;
+      };
+      ixInstances = (state = Object.freeze({}), action) => {
+        switch (action.type) {
+          case IX2_RAW_DATA_IMPORTED3: {
+            return action.payload.ixInstances || Object.freeze({});
+          }
+          case IX2_SESSION_STOPPED4: {
+            return Object.freeze({});
+          }
+          case IX2_INSTANCE_ADDED3: {
+            const {
+              instanceId,
+              elementId,
+              actionItem,
+              eventId,
+              eventTarget,
+              eventStateKey,
+              actionListId,
+              groupIndex,
+              isCarrier,
+              origin,
+              destination,
+              immediate,
+              verbose,
+              continuous,
+              parameterId,
+              actionGroups,
+              smoothing,
+              restingValue,
+              pluginInstance,
+              pluginDuration,
+              instanceDelay,
+              skipMotion,
+              skipToValue
+            } = action.payload;
+            const { actionTypeId } = actionItem;
+            const renderType = getRenderType2(actionTypeId);
+            const styleProp = getStyleProp2(renderType, actionTypeId);
+            const destinationKeys = Object.keys(destination).filter(
+              (key) => (
+                // Skip null destination values
+                destination[key] != null && // Skip string destination values
+                typeof destination[key] !== "string"
+              )
+            );
+            const { easing } = actionItem.config;
+            return (0, import_timm5.set)(state, instanceId, {
+              id: instanceId,
+              elementId,
+              active: false,
+              position: 0,
+              start: 0,
+              origin,
+              destination,
+              destinationKeys,
+              immediate,
+              verbose,
+              current: null,
+              actionItem,
+              actionTypeId,
+              eventId,
+              eventTarget,
+              eventStateKey,
+              actionListId,
+              groupIndex,
+              renderType,
+              isCarrier,
+              styleProp,
+              continuous,
+              parameterId,
+              actionGroups,
+              smoothing,
+              restingValue,
+              pluginInstance,
+              pluginDuration,
+              instanceDelay,
+              skipMotion,
+              skipToValue,
+              customEasingFn: Array.isArray(easing) && easing.length === 4 ? (
+                // @ts-expect-error - TS2345 - Argument of type 'any[]' is not assignable to parameter of type 'IX2EasingCustomType'.
+                createBezierEasing2(easing)
+              ) : void 0
+            });
+          }
+          case IX2_INSTANCE_STARTED2: {
+            const { instanceId, time } = action.payload;
+            return (0, import_timm5.mergeIn)(state, [instanceId], {
+              active: true,
+              complete: false,
+              start: time
+            });
+          }
+          case IX2_INSTANCE_REMOVED2: {
+            const { instanceId } = action.payload;
+            if (!state[instanceId]) {
+              return state;
+            }
+            const newState = {};
+            const keys = Object.keys(state);
+            const { length } = keys;
+            for (let i = 0; i < length; i++) {
+              const key = keys[i];
+              if (key !== instanceId) {
+                newState[key] = state[key];
+              }
+            }
+            return newState;
+          }
+          case IX2_ANIMATION_FRAME_CHANGED3: {
+            let newState = state;
+            const keys = Object.keys(state);
+            const { length } = keys;
+            for (let i = 0; i < length; i++) {
+              const key = keys[i];
+              const instance = state[key];
+              const reducer = instance.continuous ? continuousInstance : timedInstance;
+              newState = (0, import_timm5.set)(newState, key, reducer(instance, action));
+            }
+            return newState;
+          }
+          default: {
+            return state;
+          }
+        }
+      };
+    }
+  });
+
+  // packages/systems/ix2/engine/reducers/IX2ParametersReducer.ts
+  var IX2_RAW_DATA_IMPORTED4, IX2_SESSION_STOPPED5, IX2_PARAMETER_CHANGED2, ixParameters;
+  var init_IX2ParametersReducer = __esm({
+    "packages/systems/ix2/engine/reducers/IX2ParametersReducer.ts"() {
+      "use strict";
+      init_shared_constants();
+      ({ IX2_RAW_DATA_IMPORTED: IX2_RAW_DATA_IMPORTED4, IX2_SESSION_STOPPED: IX2_SESSION_STOPPED5, IX2_PARAMETER_CHANGED: IX2_PARAMETER_CHANGED2 } = IX2EngineActionTypes_exports);
+      ixParameters = (state = {
+        /*mutable flat state*/
+      }, action) => {
+        switch (action.type) {
+          case IX2_RAW_DATA_IMPORTED4: {
+            return (
+              // @ts-expect-error - Further investigation is needed as looks like IX2_RAW_DATA_IMPORTED is never triggered with ixParameters
+              action.payload.ixParameters || {
+                /*mutable flat state*/
+              }
+            );
+          }
+          case IX2_SESSION_STOPPED5: {
+            return {
+              /*mutable flat state*/
+            };
+          }
+          case IX2_PARAMETER_CHANGED2: {
+            const { key, value } = action.payload;
+            state[key] = value;
+            return state;
+          }
+          default: {
+            return state;
+          }
+        }
+      };
+    }
+  });
+
+  // packages/systems/ix2/engine/reducers/IX2Reducer.ts
+  var IX2Reducer_exports = {};
+  __export(IX2Reducer_exports, {
+    default: () => IX2Reducer_default
+  });
+  var import_redux, import_shared2, ixElements2, IX2Reducer_default;
+  var init_IX2Reducer = __esm({
+    "packages/systems/ix2/engine/reducers/IX2Reducer.ts"() {
+      "use strict";
+      import_redux = __toESM(require_lib2());
+      init_IX2DataReducer();
+      init_IX2RequestReducer();
+      init_IX2SessionReducer();
+      import_shared2 = __toESM(require_shared2());
+      init_IX2InstancesReducer();
+      init_IX2ParametersReducer();
+      ({ ixElements: ixElements2 } = import_shared2.IX2ElementsReducer);
+      IX2Reducer_default = (0, import_redux.combineReducers)({
+        ixData,
+        ixRequest,
+        ixSession,
+        ixElements: ixElements2,
+        ixInstances,
+        ixParameters
+      });
+    }
+  });
+
+  // node_modules/lodash/isString.js
+  var require_isString = __commonJS({
+    "node_modules/lodash/isString.js"(exports, module2) {
+      var baseGetTag = require_baseGetTag();
+      var isArray2 = require_isArray();
+      var isObjectLike2 = require_isObjectLike();
+      var stringTag = "[object String]";
+      function isString2(value) {
+        return typeof value == "string" || !isArray2(value) && isObjectLike2(value) && baseGetTag(value) == stringTag;
+      }
+      module2.exports = isString2;
+    }
+  });
+
+  // node_modules/lodash/_asciiSize.js
+  var require_asciiSize = __commonJS({
+    "node_modules/lodash/_asciiSize.js"(exports, module2) {
+      var baseProperty = require_baseProperty();
+      var asciiSize = baseProperty("length");
+      module2.exports = asciiSize;
+    }
+  });
+
+  // node_modules/lodash/_hasUnicode.js
+  var require_hasUnicode = __commonJS({
+    "node_modules/lodash/_hasUnicode.js"(exports, module2) {
+      var rsAstralRange = "\\ud800-\\udfff";
+      var rsComboMarksRange = "\\u0300-\\u036f";
+      var reComboHalfMarksRange = "\\ufe20-\\ufe2f";
+      var rsComboSymbolsRange = "\\u20d0-\\u20ff";
+      var rsComboRange = rsComboMarksRange + reComboHalfMarksRange + rsComboSymbolsRange;
+      var rsVarRange = "\\ufe0e\\ufe0f";
+      var rsZWJ = "\\u200d";
+      var reHasUnicode = RegExp("[" + rsZWJ + rsAstralRange + rsComboRange + rsVarRange + "]");
+      function hasUnicode(string) {
+        return reHasUnicode.test(string);
+      }
+      module2.exports = hasUnicode;
+    }
+  });
+
+  // node_modules/lodash/_unicodeSize.js
+  var require_unicodeSize = __commonJS({
+    "node_modules/lodash/_unicodeSize.js"(exports, module2) {
+      var rsAstralRange = "\\ud800-\\udfff";
+      var rsComboMarksRange = "\\u0300-\\u036f";
+      var reComboHalfMarksRange = "\\ufe20-\\ufe2f";
+      var rsComboSymbolsRange = "\\u20d0-\\u20ff";
+      var rsComboRange = rsComboMarksRange + reComboHalfMarksRange + rsComboSymbolsRange;
+      var rsVarRange = "\\ufe0e\\ufe0f";
+      var rsAstral = "[" + rsAstralRange + "]";
+      var rsCombo = "[" + rsComboRange + "]";
+      var rsFitz = "\\ud83c[\\udffb-\\udfff]";
+      var rsModifier = "(?:" + rsCombo + "|" + rsFitz + ")";
+      var rsNonAstral = "[^" + rsAstralRange + "]";
+      var rsRegional = "(?:\\ud83c[\\udde6-\\uddff]){2}";
+      var rsSurrPair = "[\\ud800-\\udbff][\\udc00-\\udfff]";
+      var rsZWJ = "\\u200d";
+      var reOptMod = rsModifier + "?";
+      var rsOptVar = "[" + rsVarRange + "]?";
+      var rsOptJoin = "(?:" + rsZWJ + "(?:" + [rsNonAstral, rsRegional, rsSurrPair].join("|") + ")" + rsOptVar + reOptMod + ")*";
+      var rsSeq = rsOptVar + reOptMod + rsOptJoin;
+      var rsSymbol = "(?:" + [rsNonAstral + rsCombo + "?", rsCombo, rsRegional, rsSurrPair, rsAstral].join("|") + ")";
+      var reUnicode = RegExp(rsFitz + "(?=" + rsFitz + ")|" + rsSymbol + rsSeq, "g");
+      function unicodeSize(string) {
+        var result2 = reUnicode.lastIndex = 0;
+        while (reUnicode.test(string)) {
+          ++result2;
+        }
+        return result2;
+      }
+      module2.exports = unicodeSize;
+    }
+  });
+
+  // node_modules/lodash/_stringSize.js
+  var require_stringSize = __commonJS({
+    "node_modules/lodash/_stringSize.js"(exports, module2) {
+      var asciiSize = require_asciiSize();
+      var hasUnicode = require_hasUnicode();
+      var unicodeSize = require_unicodeSize();
+      function stringSize(string) {
+        return hasUnicode(string) ? unicodeSize(string) : asciiSize(string);
+      }
+      module2.exports = stringSize;
+    }
+  });
+
+  // node_modules/lodash/size.js
+  var require_size = __commonJS({
+    "node_modules/lodash/size.js"(exports, module2) {
+      var baseKeys = require_baseKeys();
+      var getTag = require_getTag();
+      var isArrayLike = require_isArrayLike();
+      var isString2 = require_isString();
+      var stringSize = require_stringSize();
+      var mapTag = "[object Map]";
+      var setTag = "[object Set]";
+      function size2(collection) {
+        if (collection == null) {
+          return 0;
+        }
+        if (isArrayLike(collection)) {
+          return isString2(collection) ? stringSize(collection) : collection.length;
+        }
+        var tag = getTag(collection);
+        if (tag == mapTag || tag == setTag) {
+          return collection.size;
+        }
+        return baseKeys(collection).length;
+      }
+      module2.exports = size2;
+    }
+  });
+
+  // node_modules/lodash/negate.js
+  var require_negate = __commonJS({
+    "node_modules/lodash/negate.js"(exports, module2) {
+      var FUNC_ERROR_TEXT = "Expected a function";
+      function negate(predicate) {
+        if (typeof predicate != "function") {
+          throw new TypeError(FUNC_ERROR_TEXT);
+        }
+        return function() {
+          var args = arguments;
+          switch (args.length) {
+            case 0:
+              return !predicate.call(this);
+            case 1:
+              return !predicate.call(this, args[0]);
+            case 2:
+              return !predicate.call(this, args[0], args[1]);
+            case 3:
+              return !predicate.call(this, args[0], args[1], args[2]);
+          }
+          return !predicate.apply(this, args);
+        };
+      }
+      module2.exports = negate;
+    }
+  });
+
+  // node_modules/lodash/_defineProperty.js
+  var require_defineProperty = __commonJS({
+    "node_modules/lodash/_defineProperty.js"(exports, module2) {
+      var getNative = require_getNative();
+      var defineProperty = function() {
+        try {
+          var func = getNative(Object, "defineProperty");
+          func({}, "", {});
+          return func;
+        } catch (e) {
+        }
+      }();
+      module2.exports = defineProperty;
+    }
+  });
+
+  // node_modules/lodash/_baseAssignValue.js
+  var require_baseAssignValue = __commonJS({
+    "node_modules/lodash/_baseAssignValue.js"(exports, module2) {
+      var defineProperty = require_defineProperty();
+      function baseAssignValue(object, key, value) {
+        if (key == "__proto__" && defineProperty) {
+          defineProperty(object, key, {
+            "configurable": true,
+            "enumerable": true,
+            "value": value,
+            "writable": true
+          });
+        } else {
+          object[key] = value;
+        }
+      }
+      module2.exports = baseAssignValue;
+    }
+  });
+
+  // node_modules/lodash/_assignValue.js
+  var require_assignValue = __commonJS({
+    "node_modules/lodash/_assignValue.js"(exports, module2) {
+      var baseAssignValue = require_baseAssignValue();
+      var eq = require_eq();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function assignValue(object, key, value) {
+        var objValue = object[key];
+        if (!(hasOwnProperty9.call(object, key) && eq(objValue, value)) || value === void 0 && !(key in object)) {
+          baseAssignValue(object, key, value);
+        }
+      }
+      module2.exports = assignValue;
+    }
+  });
+
+  // node_modules/lodash/_baseSet.js
+  var require_baseSet = __commonJS({
+    "node_modules/lodash/_baseSet.js"(exports, module2) {
+      var assignValue = require_assignValue();
+      var castPath = require_castPath();
+      var isIndex = require_isIndex();
+      var isObject2 = require_isObject();
+      var toKey = require_toKey();
+      function baseSet(object, path, value, customizer) {
+        if (!isObject2(object)) {
+          return object;
+        }
+        path = castPath(path, object);
+        var index = -1, length = path.length, lastIndex = length - 1, nested = object;
+        while (nested != null && ++index < length) {
+          var key = toKey(path[index]), newValue = value;
+          if (key === "__proto__" || key === "constructor" || key === "prototype") {
+            return object;
+          }
+          if (index != lastIndex) {
+            var objValue = nested[key];
+            newValue = customizer ? customizer(objValue, key, nested) : void 0;
+            if (newValue === void 0) {
+              newValue = isObject2(objValue) ? objValue : isIndex(path[index + 1]) ? [] : {};
+            }
+          }
+          assignValue(nested, key, newValue);
+          nested = nested[key];
+        }
+        return object;
+      }
+      module2.exports = baseSet;
+    }
+  });
+
+  // node_modules/lodash/_basePickBy.js
+  var require_basePickBy = __commonJS({
+    "node_modules/lodash/_basePickBy.js"(exports, module2) {
+      var baseGet = require_baseGet();
+      var baseSet = require_baseSet();
+      var castPath = require_castPath();
+      function basePickBy(object, paths, predicate) {
+        var index = -1, length = paths.length, result2 = {};
+        while (++index < length) {
+          var path = paths[index], value = baseGet(object, path);
+          if (predicate(value, path)) {
+            baseSet(result2, castPath(path, object), value);
+          }
+        }
+        return result2;
+      }
+      module2.exports = basePickBy;
+    }
+  });
+
+  // node_modules/lodash/_getSymbolsIn.js
+  var require_getSymbolsIn = __commonJS({
+    "node_modules/lodash/_getSymbolsIn.js"(exports, module2) {
+      var arrayPush = require_arrayPush();
+      var getPrototype = require_getPrototype();
+      var getSymbols = require_getSymbols();
+      var stubArray = require_stubArray();
+      var nativeGetSymbols = Object.getOwnPropertySymbols;
+      var getSymbolsIn = !nativeGetSymbols ? stubArray : function(object) {
+        var result2 = [];
+        while (object) {
+          arrayPush(result2, getSymbols(object));
+          object = getPrototype(object);
+        }
+        return result2;
+      };
+      module2.exports = getSymbolsIn;
+    }
+  });
+
+  // node_modules/lodash/_nativeKeysIn.js
+  var require_nativeKeysIn = __commonJS({
+    "node_modules/lodash/_nativeKeysIn.js"(exports, module2) {
+      function nativeKeysIn(object) {
+        var result2 = [];
+        if (object != null) {
+          for (var key in Object(object)) {
+            result2.push(key);
+          }
+        }
+        return result2;
+      }
+      module2.exports = nativeKeysIn;
+    }
+  });
+
+  // node_modules/lodash/_baseKeysIn.js
+  var require_baseKeysIn = __commonJS({
+    "node_modules/lodash/_baseKeysIn.js"(exports, module2) {
+      var isObject2 = require_isObject();
+      var isPrototype = require_isPrototype();
+      var nativeKeysIn = require_nativeKeysIn();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function baseKeysIn(object) {
+        if (!isObject2(object)) {
+          return nativeKeysIn(object);
+        }
+        var isProto = isPrototype(object), result2 = [];
+        for (var key in object) {
+          if (!(key == "constructor" && (isProto || !hasOwnProperty9.call(object, key)))) {
+            result2.push(key);
+          }
+        }
+        return result2;
+      }
+      module2.exports = baseKeysIn;
+    }
+  });
+
+  // node_modules/lodash/keysIn.js
+  var require_keysIn = __commonJS({
+    "node_modules/lodash/keysIn.js"(exports, module2) {
+      var arrayLikeKeys = require_arrayLikeKeys();
+      var baseKeysIn = require_baseKeysIn();
+      var isArrayLike = require_isArrayLike();
+      function keysIn(object) {
+        return isArrayLike(object) ? arrayLikeKeys(object, true) : baseKeysIn(object);
+      }
+      module2.exports = keysIn;
+    }
+  });
+
+  // node_modules/lodash/_getAllKeysIn.js
+  var require_getAllKeysIn = __commonJS({
+    "node_modules/lodash/_getAllKeysIn.js"(exports, module2) {
+      var baseGetAllKeys = require_baseGetAllKeys();
+      var getSymbolsIn = require_getSymbolsIn();
+      var keysIn = require_keysIn();
+      function getAllKeysIn(object) {
+        return baseGetAllKeys(object, keysIn, getSymbolsIn);
+      }
+      module2.exports = getAllKeysIn;
+    }
+  });
+
+  // node_modules/lodash/pickBy.js
+  var require_pickBy = __commonJS({
+    "node_modules/lodash/pickBy.js"(exports, module2) {
+      var arrayMap = require_arrayMap();
+      var baseIteratee = require_baseIteratee();
+      var basePickBy = require_basePickBy();
+      var getAllKeysIn = require_getAllKeysIn();
+      function pickBy(object, predicate) {
+        if (object == null) {
+          return {};
+        }
+        var props = arrayMap(getAllKeysIn(object), function(prop) {
+          return [prop];
+        });
+        predicate = baseIteratee(predicate);
+        return basePickBy(object, props, function(value, path) {
+          return predicate(value, path[0]);
+        });
+      }
+      module2.exports = pickBy;
+    }
+  });
+
+  // node_modules/lodash/omitBy.js
+  var require_omitBy = __commonJS({
+    "node_modules/lodash/omitBy.js"(exports, module2) {
+      var baseIteratee = require_baseIteratee();
+      var negate = require_negate();
+      var pickBy = require_pickBy();
+      function omitBy2(object, predicate) {
+        return pickBy(object, negate(baseIteratee(predicate)));
+      }
+      module2.exports = omitBy2;
+    }
+  });
+
+  // node_modules/lodash/isEmpty.js
+  var require_isEmpty = __commonJS({
+    "node_modules/lodash/isEmpty.js"(exports, module2) {
+      var baseKeys = require_baseKeys();
+      var getTag = require_getTag();
+      var isArguments = require_isArguments();
+      var isArray2 = require_isArray();
+      var isArrayLike = require_isArrayLike();
+      var isBuffer = require_isBuffer();
+      var isPrototype = require_isPrototype();
+      var isTypedArray = require_isTypedArray();
+      var mapTag = "[object Map]";
+      var setTag = "[object Set]";
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function isEmpty3(value) {
+        if (value == null) {
+          return true;
+        }
+        if (isArrayLike(value) && (isArray2(value) || typeof value == "string" || typeof value.splice == "function" || isBuffer(value) || isTypedArray(value) || isArguments(value))) {
+          return !value.length;
+        }
+        var tag = getTag(value);
+        if (tag == mapTag || tag == setTag) {
+          return !value.size;
+        }
+        if (isPrototype(value)) {
+          return !baseKeys(value).length;
+        }
+        for (var key in value) {
+          if (hasOwnProperty9.call(value, key)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      module2.exports = isEmpty3;
+    }
+  });
+
+  // node_modules/lodash/mapValues.js
+  var require_mapValues = __commonJS({
+    "node_modules/lodash/mapValues.js"(exports, module2) {
+      var baseAssignValue = require_baseAssignValue();
+      var baseForOwn = require_baseForOwn();
+      var baseIteratee = require_baseIteratee();
+      function mapValues2(object, iteratee) {
+        var result2 = {};
+        iteratee = baseIteratee(iteratee, 3);
+        baseForOwn(object, function(value, key, object2) {
+          baseAssignValue(result2, key, iteratee(value, key, object2));
+        });
+        return result2;
+      }
+      module2.exports = mapValues2;
+    }
+  });
+
+  // node_modules/lodash/_arrayEach.js
+  var require_arrayEach = __commonJS({
+    "node_modules/lodash/_arrayEach.js"(exports, module2) {
+      function arrayEach(array, iteratee) {
+        var index = -1, length = array == null ? 0 : array.length;
+        while (++index < length) {
+          if (iteratee(array[index], index, array) === false) {
+            break;
+          }
+        }
+        return array;
+      }
+      module2.exports = arrayEach;
+    }
+  });
+
+  // node_modules/lodash/_castFunction.js
+  var require_castFunction = __commonJS({
+    "node_modules/lodash/_castFunction.js"(exports, module2) {
+      var identity3 = require_identity();
+      function castFunction(value) {
+        return typeof value == "function" ? value : identity3;
+      }
+      module2.exports = castFunction;
+    }
+  });
+
+  // node_modules/lodash/forEach.js
+  var require_forEach = __commonJS({
+    "node_modules/lodash/forEach.js"(exports, module2) {
+      var arrayEach = require_arrayEach();
+      var baseEach = require_baseEach();
+      var castFunction = require_castFunction();
+      var isArray2 = require_isArray();
+      function forEach6(collection, iteratee) {
+        var func = isArray2(collection) ? arrayEach : baseEach;
+        return func(collection, castFunction(iteratee));
+      }
+      module2.exports = forEach6;
+    }
+  });
+
+  // node_modules/lodash/now.js
+  var require_now = __commonJS({
+    "node_modules/lodash/now.js"(exports, module2) {
+      var root2 = require_root();
+      var now = function() {
+        return root2.Date.now();
+      };
+      module2.exports = now;
+    }
+  });
+
+  // node_modules/lodash/debounce.js
+  var require_debounce = __commonJS({
+    "node_modules/lodash/debounce.js"(exports, module2) {
+      var isObject2 = require_isObject();
+      var now = require_now();
+      var toNumber = require_toNumber();
+      var FUNC_ERROR_TEXT = "Expected a function";
+      var nativeMax = Math.max;
+      var nativeMin = Math.min;
+      function debounce2(func, wait, options) {
+        var lastArgs, lastThis, maxWait, result2, timerId, lastCallTime, lastInvokeTime = 0, leading = false, maxing = false, trailing = true;
+        if (typeof func != "function") {
+          throw new TypeError(FUNC_ERROR_TEXT);
+        }
+        wait = toNumber(wait) || 0;
+        if (isObject2(options)) {
+          leading = !!options.leading;
+          maxing = "maxWait" in options;
+          maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+          trailing = "trailing" in options ? !!options.trailing : trailing;
+        }
+        function invokeFunc(time) {
+          var args = lastArgs, thisArg = lastThis;
+          lastArgs = lastThis = void 0;
+          lastInvokeTime = time;
+          result2 = func.apply(thisArg, args);
+          return result2;
+        }
+        function leadingEdge(time) {
+          lastInvokeTime = time;
+          timerId = setTimeout(timerExpired, wait);
+          return leading ? invokeFunc(time) : result2;
+        }
+        function remainingWait(time) {
+          var timeSinceLastCall = time - lastCallTime, timeSinceLastInvoke = time - lastInvokeTime, timeWaiting = wait - timeSinceLastCall;
+          return maxing ? nativeMin(timeWaiting, maxWait - timeSinceLastInvoke) : timeWaiting;
+        }
+        function shouldInvoke(time) {
+          var timeSinceLastCall = time - lastCallTime, timeSinceLastInvoke = time - lastInvokeTime;
+          return lastCallTime === void 0 || timeSinceLastCall >= wait || timeSinceLastCall < 0 || maxing && timeSinceLastInvoke >= maxWait;
+        }
+        function timerExpired() {
+          var time = now();
+          if (shouldInvoke(time)) {
+            return trailingEdge(time);
+          }
+          timerId = setTimeout(timerExpired, remainingWait(time));
+        }
+        function trailingEdge(time) {
+          timerId = void 0;
+          if (trailing && lastArgs) {
+            return invokeFunc(time);
+          }
+          lastArgs = lastThis = void 0;
+          return result2;
+        }
+        function cancel() {
+          if (timerId !== void 0) {
+            clearTimeout(timerId);
+          }
+          lastInvokeTime = 0;
+          lastArgs = lastCallTime = lastThis = timerId = void 0;
+        }
+        function flush() {
+          return timerId === void 0 ? result2 : trailingEdge(now());
+        }
+        function debounced() {
+          var time = now(), isInvoking = shouldInvoke(time);
+          lastArgs = arguments;
+          lastThis = this;
+          lastCallTime = time;
+          if (isInvoking) {
+            if (timerId === void 0) {
+              return leadingEdge(lastCallTime);
+            }
+            if (maxing) {
+              clearTimeout(timerId);
+              timerId = setTimeout(timerExpired, wait);
+              return invokeFunc(lastCallTime);
+            }
+          }
+          if (timerId === void 0) {
+            timerId = setTimeout(timerExpired, wait);
+          }
+          return result2;
+        }
+        debounced.cancel = cancel;
+        debounced.flush = flush;
+        return debounced;
+      }
+      module2.exports = debounce2;
+    }
+  });
+
+  // node_modules/lodash/throttle.js
+  var require_throttle = __commonJS({
+    "node_modules/lodash/throttle.js"(exports, module2) {
+      var debounce2 = require_debounce();
+      var isObject2 = require_isObject();
+      var FUNC_ERROR_TEXT = "Expected a function";
+      function throttle2(func, wait, options) {
+        var leading = true, trailing = true;
+        if (typeof func != "function") {
+          throw new TypeError(FUNC_ERROR_TEXT);
+        }
+        if (isObject2(options)) {
+          leading = "leading" in options ? !!options.leading : leading;
+          trailing = "trailing" in options ? !!options.trailing : trailing;
+        }
+        return debounce2(func, wait, {
+          "leading": leading,
+          "maxWait": wait,
+          "trailing": trailing
+        });
+      }
+      module2.exports = throttle2;
+    }
+  });
+
+  // packages/systems/ix2/engine/actions/IX2EngineActions.ts
+  var IX2EngineActions_exports = {};
+  __export(IX2EngineActions_exports, {
+    actionListPlaybackChanged: () => actionListPlaybackChanged,
+    animationFrameChanged: () => animationFrameChanged,
+    clearRequested: () => clearRequested,
+    elementStateChanged: () => elementStateChanged,
+    eventListenerAdded: () => eventListenerAdded,
+    eventStateChanged: () => eventStateChanged,
+    instanceAdded: () => instanceAdded,
+    instanceRemoved: () => instanceRemoved,
+    instanceStarted: () => instanceStarted,
+    mediaQueriesDefined: () => mediaQueriesDefined,
+    parameterChanged: () => parameterChanged,
+    playbackRequested: () => playbackRequested,
+    previewRequested: () => previewRequested,
+    rawDataImported: () => rawDataImported,
+    sessionInitialized: () => sessionInitialized,
+    sessionStarted: () => sessionStarted,
+    sessionStopped: () => sessionStopped,
+    stopRequested: () => stopRequested,
+    testFrameRendered: () => testFrameRendered,
+    viewportWidthChanged: () => viewportWidthChanged
+  });
+  var import_shared3, IX2_RAW_DATA_IMPORTED5, IX2_SESSION_INITIALIZED3, IX2_SESSION_STARTED3, IX2_SESSION_STOPPED6, IX2_PREVIEW_REQUESTED3, IX2_PLAYBACK_REQUESTED3, IX2_STOP_REQUESTED3, IX2_CLEAR_REQUESTED3, IX2_EVENT_LISTENER_ADDED3, IX2_TEST_FRAME_RENDERED3, IX2_EVENT_STATE_CHANGED3, IX2_ANIMATION_FRAME_CHANGED4, IX2_PARAMETER_CHANGED3, IX2_INSTANCE_ADDED4, IX2_INSTANCE_STARTED3, IX2_INSTANCE_REMOVED3, IX2_ELEMENT_STATE_CHANGED3, IX2_ACTION_LIST_PLAYBACK_CHANGED3, IX2_VIEWPORT_WIDTH_CHANGED3, IX2_MEDIA_QUERIES_DEFINED3, reifyState2, rawDataImported, sessionInitialized, sessionStarted, sessionStopped, previewRequested, playbackRequested, stopRequested, clearRequested, eventListenerAdded, testFrameRendered, eventStateChanged, animationFrameChanged, parameterChanged, instanceAdded, instanceStarted, instanceRemoved, elementStateChanged, actionListPlaybackChanged, viewportWidthChanged, mediaQueriesDefined;
+  var init_IX2EngineActions = __esm({
+    "packages/systems/ix2/engine/actions/IX2EngineActions.ts"() {
+      "use strict";
+      init_shared_constants();
+      import_shared3 = __toESM(require_shared2());
+      ({
+        IX2_RAW_DATA_IMPORTED: IX2_RAW_DATA_IMPORTED5,
+        IX2_SESSION_INITIALIZED: IX2_SESSION_INITIALIZED3,
+        IX2_SESSION_STARTED: IX2_SESSION_STARTED3,
+        IX2_SESSION_STOPPED: IX2_SESSION_STOPPED6,
+        IX2_PREVIEW_REQUESTED: IX2_PREVIEW_REQUESTED3,
+        IX2_PLAYBACK_REQUESTED: IX2_PLAYBACK_REQUESTED3,
+        IX2_STOP_REQUESTED: IX2_STOP_REQUESTED3,
+        IX2_CLEAR_REQUESTED: IX2_CLEAR_REQUESTED3,
+        IX2_EVENT_LISTENER_ADDED: IX2_EVENT_LISTENER_ADDED3,
+        IX2_TEST_FRAME_RENDERED: IX2_TEST_FRAME_RENDERED3,
+        IX2_EVENT_STATE_CHANGED: IX2_EVENT_STATE_CHANGED3,
+        IX2_ANIMATION_FRAME_CHANGED: IX2_ANIMATION_FRAME_CHANGED4,
+        IX2_PARAMETER_CHANGED: IX2_PARAMETER_CHANGED3,
+        IX2_INSTANCE_ADDED: IX2_INSTANCE_ADDED4,
+        IX2_INSTANCE_STARTED: IX2_INSTANCE_STARTED3,
+        IX2_INSTANCE_REMOVED: IX2_INSTANCE_REMOVED3,
+        IX2_ELEMENT_STATE_CHANGED: IX2_ELEMENT_STATE_CHANGED3,
+        IX2_ACTION_LIST_PLAYBACK_CHANGED: IX2_ACTION_LIST_PLAYBACK_CHANGED3,
+        IX2_VIEWPORT_WIDTH_CHANGED: IX2_VIEWPORT_WIDTH_CHANGED3,
+        IX2_MEDIA_QUERIES_DEFINED: IX2_MEDIA_QUERIES_DEFINED3
+      } = IX2EngineActionTypes_exports);
+      ({ reifyState: reifyState2 } = import_shared3.IX2VanillaUtils);
+      rawDataImported = (rawData) => ({
+        type: IX2_RAW_DATA_IMPORTED5,
+        payload: {
+          ...reifyState2(rawData)
+        }
+      });
+      sessionInitialized = ({
+        hasBoundaryNodes,
+        reducedMotion
+      }) => ({
+        type: IX2_SESSION_INITIALIZED3,
+        payload: {
+          hasBoundaryNodes,
+          reducedMotion
+        }
+      });
+      sessionStarted = () => ({
+        type: IX2_SESSION_STARTED3
+      });
+      sessionStopped = () => ({
+        type: IX2_SESSION_STOPPED6
+      });
+      previewRequested = ({
+        rawData,
+        defer
+      }) => ({
+        type: IX2_PREVIEW_REQUESTED3,
+        payload: {
+          defer,
+          rawData
+        }
+      });
+      playbackRequested = ({
+        actionTypeId = ActionTypeConsts.GENERAL_START_ACTION,
+        actionListId,
+        actionItemId,
+        eventId,
+        allowEvents,
+        immediate,
+        testManual,
+        verbose,
+        rawData
+      }) => ({
+        type: IX2_PLAYBACK_REQUESTED3,
+        payload: {
+          actionTypeId,
+          actionListId,
+          actionItemId,
+          testManual,
+          eventId,
+          allowEvents,
+          immediate,
+          verbose,
+          rawData
+        }
+      });
+      stopRequested = (actionListId) => ({
+        type: IX2_STOP_REQUESTED3,
+        payload: {
+          actionListId
+        }
+      });
+      clearRequested = () => ({
+        type: IX2_CLEAR_REQUESTED3
+      });
+      eventListenerAdded = (target, listenerParams) => ({
+        type: IX2_EVENT_LISTENER_ADDED3,
+        payload: {
+          target,
+          listenerParams
+        }
+      });
+      testFrameRendered = (step = 1) => ({
+        type: IX2_TEST_FRAME_RENDERED3,
+        payload: {
+          step
+        }
+      });
+      eventStateChanged = (stateKey, newState) => ({
+        type: IX2_EVENT_STATE_CHANGED3,
+        payload: {
+          stateKey,
+          newState
+        }
+      });
+      animationFrameChanged = (now, parameters) => ({
+        type: IX2_ANIMATION_FRAME_CHANGED4,
+        payload: {
+          now,
+          parameters
+        }
+      });
+      parameterChanged = (key, value) => ({
+        type: IX2_PARAMETER_CHANGED3,
+        payload: {
+          key,
+          value
+        }
+      });
+      instanceAdded = (options) => ({
+        type: IX2_INSTANCE_ADDED4,
+        payload: {
+          ...options
+        }
+      });
+      instanceStarted = (instanceId, time) => ({
+        type: IX2_INSTANCE_STARTED3,
+        payload: {
+          instanceId,
+          time
+        }
+      });
+      instanceRemoved = (instanceId) => ({
+        type: IX2_INSTANCE_REMOVED3,
+        payload: {
+          instanceId
+        }
+      });
+      elementStateChanged = (elementId, actionTypeId, current, actionItem) => ({
+        type: IX2_ELEMENT_STATE_CHANGED3,
+        payload: {
+          elementId,
+          actionTypeId,
+          current,
+          actionItem
+        }
+      });
+      actionListPlaybackChanged = ({
+        actionListId,
+        isPlaying
+      }) => ({
+        type: IX2_ACTION_LIST_PLAYBACK_CHANGED3,
+        payload: {
+          actionListId,
+          isPlaying
+        }
+      });
+      viewportWidthChanged = ({
+        width,
+        mediaQueries
+      }) => ({
+        type: IX2_VIEWPORT_WIDTH_CHANGED3,
+        payload: {
+          width,
+          mediaQueries
+        }
+      });
+      mediaQueriesDefined = () => ({
+        type: IX2_MEDIA_QUERIES_DEFINED3
+      });
+    }
+  });
+
+  // packages/systems/ix2/engine/logic/IX2BrowserApi.ts
+  var IX2BrowserApi_exports = {};
+  __export(IX2BrowserApi_exports, {
+    elementContains: () => elementContains,
+    getChildElements: () => getChildElements,
+    getClosestElement: () => getClosestElement,
+    getProperty: () => getProperty,
+    getQuerySelector: () => getQuerySelector,
+    getRefType: () => getRefType,
+    getSiblingElements: () => getSiblingElements,
+    getStyle: () => getStyle,
+    getValidDocument: () => getValidDocument,
+    isSiblingNode: () => isSiblingNode,
+    matchSelector: () => matchSelector,
+    queryDocument: () => queryDocument,
+    setStyle: () => setStyle
+  });
+  function setStyle(element, prop, value) {
+    element.style[prop] = value;
+  }
+  function getStyle(element, prop) {
+    if (prop.startsWith("--")) {
+      return window.getComputedStyle(document.documentElement).getPropertyValue(prop);
+    }
+    return element.style[prop];
+  }
+  function getProperty(element, prop) {
+    return element[prop];
+  }
+  function matchSelector(selector) {
+    return (element) => element[ELEMENT_MATCHES2](selector);
+  }
+  function getQuerySelector({
+    id,
+    selector
+  }) {
+    if (id) {
+      let nodeId = id;
+      if (id.indexOf(IX2_ID_DELIMITER2) !== -1) {
+        const pair = id.split(IX2_ID_DELIMITER2);
+        const pageId = pair[0];
+        nodeId = pair[1];
+        if (pageId !== document.documentElement.getAttribute(WF_PAGE2)) {
+          return null;
+        }
+      }
+      return `[data-w-id="${nodeId}"], [data-w-id^="${nodeId}_instance"]`;
+    }
+    return selector;
+  }
+  function getValidDocument(pageId) {
+    if (pageId == null || pageId === document.documentElement.getAttribute(WF_PAGE2)) {
+      return document;
+    }
+    return null;
+  }
+  function queryDocument(baseSelector, descendantSelector) {
+    return Array.prototype.slice.call(
+      document.querySelectorAll(
+        descendantSelector ? baseSelector + " " + descendantSelector : baseSelector
+      )
+    );
+  }
+  function elementContains(parent, child) {
+    return parent.contains(child);
+  }
+  function isSiblingNode(a, b) {
+    return a !== b && a.parentNode === b.parentNode;
+  }
+  function getChildElements(sourceElements) {
+    const childElements = [];
+    for (let i = 0, { length } = sourceElements || []; i < length; i++) {
+      const { children } = sourceElements[i];
+      const { length: childCount } = children;
+      if (!childCount) {
+        continue;
+      }
+      for (let j = 0; j < childCount; j++) {
+        childElements.push(children[j]);
+      }
+    }
+    return childElements;
+  }
+  function getSiblingElements(sourceElements = []) {
+    const elements = [];
+    const parentCache = [];
+    for (let i = 0, { length } = sourceElements; i < length; i++) {
+      const { parentNode } = sourceElements[i];
+      if (!parentNode || !parentNode.children || !parentNode.children.length) {
+        continue;
+      }
+      if (parentCache.indexOf(parentNode) !== -1) {
+        continue;
+      }
+      parentCache.push(parentNode);
+      let el = parentNode.firstElementChild;
+      while (el != null) {
+        if (sourceElements.indexOf(el) === -1) {
+          elements.push(el);
+        }
+        el = el.nextElementSibling;
+      }
+    }
+    return elements;
+  }
+  function getRefType(ref) {
+    if (ref != null && typeof ref == "object") {
+      return ref instanceof Element ? HTML_ELEMENT3 : PLAIN_OBJECT3;
+    }
+    return null;
+  }
+  var import_shared4, ELEMENT_MATCHES2, IX2_ID_DELIMITER2, HTML_ELEMENT3, PLAIN_OBJECT3, WF_PAGE2, getClosestElement;
+  var init_IX2BrowserApi = __esm({
+    "packages/systems/ix2/engine/logic/IX2BrowserApi.ts"() {
+      "use strict";
+      import_shared4 = __toESM(require_shared2());
+      init_shared_constants();
+      ({ ELEMENT_MATCHES: ELEMENT_MATCHES2 } = import_shared4.IX2BrowserSupport);
+      ({ IX2_ID_DELIMITER: IX2_ID_DELIMITER2, HTML_ELEMENT: HTML_ELEMENT3, PLAIN_OBJECT: PLAIN_OBJECT3, WF_PAGE: WF_PAGE2 } = IX2EngineConstants_exports);
+      getClosestElement = Element.prototype.closest ? (element, selector) => {
+        if (!document.documentElement.contains(element)) {
+          return null;
+        }
+        return element.closest(selector);
+      } : (element, selector) => {
+        if (!document.documentElement.contains(element)) {
+          return null;
+        }
+        let el = element;
+        do {
+          if (el[ELEMENT_MATCHES2] && el[ELEMENT_MATCHES2](selector)) {
+            return el;
+          }
+          el = el.parentNode;
+        } while (el != null);
+        return null;
+      };
+    }
+  });
+
+  // node_modules/lodash/_baseCreate.js
+  var require_baseCreate = __commonJS({
+    "node_modules/lodash/_baseCreate.js"(exports, module2) {
+      var isObject2 = require_isObject();
+      var objectCreate = Object.create;
+      var baseCreate = function() {
+        function object() {
+        }
+        return function(proto) {
+          if (!isObject2(proto)) {
+            return {};
+          }
+          if (objectCreate) {
+            return objectCreate(proto);
+          }
+          object.prototype = proto;
+          var result2 = new object();
+          object.prototype = void 0;
+          return result2;
+        };
+      }();
+      module2.exports = baseCreate;
+    }
+  });
+
+  // node_modules/lodash/_baseLodash.js
+  var require_baseLodash = __commonJS({
+    "node_modules/lodash/_baseLodash.js"(exports, module2) {
+      function baseLodash() {
+      }
+      module2.exports = baseLodash;
+    }
+  });
+
+  // node_modules/lodash/_LodashWrapper.js
+  var require_LodashWrapper = __commonJS({
+    "node_modules/lodash/_LodashWrapper.js"(exports, module2) {
+      var baseCreate = require_baseCreate();
+      var baseLodash = require_baseLodash();
+      function LodashWrapper(value, chainAll) {
+        this.__wrapped__ = value;
+        this.__actions__ = [];
+        this.__chain__ = !!chainAll;
+        this.__index__ = 0;
+        this.__values__ = void 0;
+      }
+      LodashWrapper.prototype = baseCreate(baseLodash.prototype);
+      LodashWrapper.prototype.constructor = LodashWrapper;
+      module2.exports = LodashWrapper;
+    }
+  });
+
+  // node_modules/lodash/_isFlattenable.js
+  var require_isFlattenable = __commonJS({
+    "node_modules/lodash/_isFlattenable.js"(exports, module2) {
+      var Symbol2 = require_Symbol();
+      var isArguments = require_isArguments();
+      var isArray2 = require_isArray();
+      var spreadableSymbol = Symbol2 ? Symbol2.isConcatSpreadable : void 0;
+      function isFlattenable(value) {
+        return isArray2(value) || isArguments(value) || !!(spreadableSymbol && value && value[spreadableSymbol]);
+      }
+      module2.exports = isFlattenable;
+    }
+  });
+
+  // node_modules/lodash/_baseFlatten.js
+  var require_baseFlatten = __commonJS({
+    "node_modules/lodash/_baseFlatten.js"(exports, module2) {
+      var arrayPush = require_arrayPush();
+      var isFlattenable = require_isFlattenable();
+      function baseFlatten(array, depth, predicate, isStrict, result2) {
+        var index = -1, length = array.length;
+        predicate || (predicate = isFlattenable);
+        result2 || (result2 = []);
+        while (++index < length) {
+          var value = array[index];
+          if (depth > 0 && predicate(value)) {
+            if (depth > 1) {
+              baseFlatten(value, depth - 1, predicate, isStrict, result2);
+            } else {
+              arrayPush(result2, value);
+            }
+          } else if (!isStrict) {
+            result2[result2.length] = value;
+          }
+        }
+        return result2;
+      }
+      module2.exports = baseFlatten;
+    }
+  });
+
+  // node_modules/lodash/flatten.js
+  var require_flatten = __commonJS({
+    "node_modules/lodash/flatten.js"(exports, module2) {
+      var baseFlatten = require_baseFlatten();
+      function flatten(array) {
+        var length = array == null ? 0 : array.length;
+        return length ? baseFlatten(array, 1) : [];
+      }
+      module2.exports = flatten;
+    }
+  });
+
+  // node_modules/lodash/_apply.js
+  var require_apply = __commonJS({
+    "node_modules/lodash/_apply.js"(exports, module2) {
+      function apply(func, thisArg, args) {
+        switch (args.length) {
+          case 0:
+            return func.call(thisArg);
+          case 1:
+            return func.call(thisArg, args[0]);
+          case 2:
+            return func.call(thisArg, args[0], args[1]);
+          case 3:
+            return func.call(thisArg, args[0], args[1], args[2]);
+        }
+        return func.apply(thisArg, args);
+      }
+      module2.exports = apply;
+    }
+  });
+
+  // node_modules/lodash/_overRest.js
+  var require_overRest = __commonJS({
+    "node_modules/lodash/_overRest.js"(exports, module2) {
+      var apply = require_apply();
+      var nativeMax = Math.max;
+      function overRest(func, start, transform2) {
+        start = nativeMax(start === void 0 ? func.length - 1 : start, 0);
+        return function() {
+          var args = arguments, index = -1, length = nativeMax(args.length - start, 0), array = Array(length);
+          while (++index < length) {
+            array[index] = args[start + index];
+          }
+          index = -1;
+          var otherArgs = Array(start + 1);
+          while (++index < start) {
+            otherArgs[index] = args[index];
+          }
+          otherArgs[start] = transform2(array);
+          return apply(func, this, otherArgs);
+        };
+      }
+      module2.exports = overRest;
+    }
+  });
+
+  // node_modules/lodash/constant.js
+  var require_constant = __commonJS({
+    "node_modules/lodash/constant.js"(exports, module2) {
+      function constant2(value) {
+        return function() {
+          return value;
+        };
+      }
+      module2.exports = constant2;
+    }
+  });
+
+  // node_modules/lodash/_baseSetToString.js
+  var require_baseSetToString = __commonJS({
+    "node_modules/lodash/_baseSetToString.js"(exports, module2) {
+      var constant2 = require_constant();
+      var defineProperty = require_defineProperty();
+      var identity3 = require_identity();
+      var baseSetToString = !defineProperty ? identity3 : function(func, string) {
+        return defineProperty(func, "toString", {
+          "configurable": true,
+          "enumerable": false,
+          "value": constant2(string),
+          "writable": true
+        });
+      };
+      module2.exports = baseSetToString;
+    }
+  });
+
+  // node_modules/lodash/_shortOut.js
+  var require_shortOut = __commonJS({
+    "node_modules/lodash/_shortOut.js"(exports, module2) {
+      var HOT_COUNT = 800;
+      var HOT_SPAN = 16;
+      var nativeNow = Date.now;
+      function shortOut(func) {
+        var count = 0, lastCalled = 0;
+        return function() {
+          var stamp = nativeNow(), remaining = HOT_SPAN - (stamp - lastCalled);
+          lastCalled = stamp;
+          if (remaining > 0) {
+            if (++count >= HOT_COUNT) {
+              return arguments[0];
+            }
+          } else {
+            count = 0;
+          }
+          return func.apply(void 0, arguments);
+        };
+      }
+      module2.exports = shortOut;
+    }
+  });
+
+  // node_modules/lodash/_setToString.js
+  var require_setToString = __commonJS({
+    "node_modules/lodash/_setToString.js"(exports, module2) {
+      var baseSetToString = require_baseSetToString();
+      var shortOut = require_shortOut();
+      var setToString = shortOut(baseSetToString);
+      module2.exports = setToString;
+    }
+  });
+
+  // node_modules/lodash/_flatRest.js
+  var require_flatRest = __commonJS({
+    "node_modules/lodash/_flatRest.js"(exports, module2) {
+      var flatten = require_flatten();
+      var overRest = require_overRest();
+      var setToString = require_setToString();
+      function flatRest(func) {
+        return setToString(overRest(func, void 0, flatten), func + "");
+      }
+      module2.exports = flatRest;
+    }
+  });
+
+  // node_modules/lodash/_metaMap.js
+  var require_metaMap = __commonJS({
+    "node_modules/lodash/_metaMap.js"(exports, module2) {
+      var WeakMap2 = require_WeakMap();
+      var metaMap = WeakMap2 && new WeakMap2();
+      module2.exports = metaMap;
+    }
+  });
+
+  // node_modules/lodash/noop.js
+  var require_noop = __commonJS({
+    "node_modules/lodash/noop.js"(exports, module2) {
+      function noop2() {
+      }
+      module2.exports = noop2;
+    }
+  });
+
+  // node_modules/lodash/_getData.js
+  var require_getData = __commonJS({
+    "node_modules/lodash/_getData.js"(exports, module2) {
+      var metaMap = require_metaMap();
+      var noop2 = require_noop();
+      var getData = !metaMap ? noop2 : function(func) {
+        return metaMap.get(func);
+      };
+      module2.exports = getData;
+    }
+  });
+
+  // node_modules/lodash/_realNames.js
+  var require_realNames = __commonJS({
+    "node_modules/lodash/_realNames.js"(exports, module2) {
+      var realNames = {};
+      module2.exports = realNames;
+    }
+  });
+
+  // node_modules/lodash/_getFuncName.js
+  var require_getFuncName = __commonJS({
+    "node_modules/lodash/_getFuncName.js"(exports, module2) {
+      var realNames = require_realNames();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function getFuncName(func) {
+        var result2 = func.name + "", array = realNames[result2], length = hasOwnProperty9.call(realNames, result2) ? array.length : 0;
+        while (length--) {
+          var data = array[length], otherFunc = data.func;
+          if (otherFunc == null || otherFunc == func) {
+            return data.name;
+          }
+        }
+        return result2;
+      }
+      module2.exports = getFuncName;
+    }
+  });
+
+  // node_modules/lodash/_LazyWrapper.js
+  var require_LazyWrapper = __commonJS({
+    "node_modules/lodash/_LazyWrapper.js"(exports, module2) {
+      var baseCreate = require_baseCreate();
+      var baseLodash = require_baseLodash();
+      var MAX_ARRAY_LENGTH2 = 4294967295;
+      function LazyWrapper(value) {
+        this.__wrapped__ = value;
+        this.__actions__ = [];
+        this.__dir__ = 1;
+        this.__filtered__ = false;
+        this.__iteratees__ = [];
+        this.__takeCount__ = MAX_ARRAY_LENGTH2;
+        this.__views__ = [];
+      }
+      LazyWrapper.prototype = baseCreate(baseLodash.prototype);
+      LazyWrapper.prototype.constructor = LazyWrapper;
+      module2.exports = LazyWrapper;
+    }
+  });
+
+  // node_modules/lodash/_copyArray.js
+  var require_copyArray = __commonJS({
+    "node_modules/lodash/_copyArray.js"(exports, module2) {
+      function copyArray(source, array) {
+        var index = -1, length = source.length;
+        array || (array = Array(length));
+        while (++index < length) {
+          array[index] = source[index];
+        }
+        return array;
+      }
+      module2.exports = copyArray;
+    }
+  });
+
+  // node_modules/lodash/_wrapperClone.js
+  var require_wrapperClone = __commonJS({
+    "node_modules/lodash/_wrapperClone.js"(exports, module2) {
+      var LazyWrapper = require_LazyWrapper();
+      var LodashWrapper = require_LodashWrapper();
+      var copyArray = require_copyArray();
+      function wrapperClone(wrapper) {
+        if (wrapper instanceof LazyWrapper) {
+          return wrapper.clone();
+        }
+        var result2 = new LodashWrapper(wrapper.__wrapped__, wrapper.__chain__);
+        result2.__actions__ = copyArray(wrapper.__actions__);
+        result2.__index__ = wrapper.__index__;
+        result2.__values__ = wrapper.__values__;
+        return result2;
+      }
+      module2.exports = wrapperClone;
+    }
+  });
+
+  // node_modules/lodash/wrapperLodash.js
+  var require_wrapperLodash = __commonJS({
+    "node_modules/lodash/wrapperLodash.js"(exports, module2) {
+      var LazyWrapper = require_LazyWrapper();
+      var LodashWrapper = require_LodashWrapper();
+      var baseLodash = require_baseLodash();
+      var isArray2 = require_isArray();
+      var isObjectLike2 = require_isObjectLike();
+      var wrapperClone = require_wrapperClone();
+      var objectProto = Object.prototype;
+      var hasOwnProperty9 = objectProto.hasOwnProperty;
+      function lodash(value) {
+        if (isObjectLike2(value) && !isArray2(value) && !(value instanceof LazyWrapper)) {
+          if (value instanceof LodashWrapper) {
+            return value;
+          }
+          if (hasOwnProperty9.call(value, "__wrapped__")) {
+            return wrapperClone(value);
+          }
+        }
+        return new LodashWrapper(value);
+      }
+      lodash.prototype = baseLodash.prototype;
+      lodash.prototype.constructor = lodash;
+      module2.exports = lodash;
+    }
+  });
+
+  // node_modules/lodash/_isLaziable.js
+  var require_isLaziable = __commonJS({
+    "node_modules/lodash/_isLaziable.js"(exports, module2) {
+      var LazyWrapper = require_LazyWrapper();
+      var getData = require_getData();
+      var getFuncName = require_getFuncName();
+      var lodash = require_wrapperLodash();
+      function isLaziable(func) {
+        var funcName = getFuncName(func), other = lodash[funcName];
+        if (typeof other != "function" || !(funcName in LazyWrapper.prototype)) {
+          return false;
+        }
+        if (func === other) {
+          return true;
+        }
+        var data = getData(other);
+        return !!data && func === data[0];
+      }
+      module2.exports = isLaziable;
+    }
+  });
+
+  // node_modules/lodash/_createFlow.js
+  var require_createFlow = __commonJS({
+    "node_modules/lodash/_createFlow.js"(exports, module2) {
+      var LodashWrapper = require_LodashWrapper();
+      var flatRest = require_flatRest();
+      var getData = require_getData();
+      var getFuncName = require_getFuncName();
+      var isArray2 = require_isArray();
+      var isLaziable = require_isLaziable();
+      var FUNC_ERROR_TEXT = "Expected a function";
+      var WRAP_CURRY_FLAG = 8;
+      var WRAP_PARTIAL_FLAG = 32;
+      var WRAP_ARY_FLAG = 128;
+      var WRAP_REARG_FLAG = 256;
+      function createFlow(fromRight) {
+        return flatRest(function(funcs) {
+          var length = funcs.length, index = length, prereq = LodashWrapper.prototype.thru;
+          if (fromRight) {
+            funcs.reverse();
+          }
+          while (index--) {
+            var func = funcs[index];
+            if (typeof func != "function") {
+              throw new TypeError(FUNC_ERROR_TEXT);
+            }
+            if (prereq && !wrapper && getFuncName(func) == "wrapper") {
+              var wrapper = new LodashWrapper([], true);
+            }
+          }
+          index = wrapper ? index : length;
+          while (++index < length) {
+            func = funcs[index];
+            var funcName = getFuncName(func), data = funcName == "wrapper" ? getData(func) : void 0;
+            if (data && isLaziable(data[0]) && data[1] == (WRAP_ARY_FLAG | WRAP_CURRY_FLAG | WRAP_PARTIAL_FLAG | WRAP_REARG_FLAG) && !data[4].length && data[9] == 1) {
+              wrapper = wrapper[getFuncName(data[0])].apply(wrapper, data[3]);
+            } else {
+              wrapper = func.length == 1 && isLaziable(func) ? wrapper[funcName]() : wrapper.thru(func);
+            }
+          }
+          return function() {
+            var args = arguments, value = args[0];
+            if (wrapper && args.length == 1 && isArray2(value)) {
+              return wrapper.plant(value).value();
+            }
+            var index2 = 0, result2 = length ? funcs[index2].apply(this, args) : value;
+            while (++index2 < length) {
+              result2 = funcs[index2].call(this, result2);
+            }
+            return result2;
+          };
+        });
+      }
+      module2.exports = createFlow;
+    }
+  });
+
+  // node_modules/lodash/flow.js
+  var require_flow = __commonJS({
+    "node_modules/lodash/flow.js"(exports, module2) {
+      var createFlow = require_createFlow();
+      var flow2 = createFlow();
+      module2.exports = flow2;
+    }
+  });
+
+  // node_modules/lodash/_baseClamp.js
+  var require_baseClamp = __commonJS({
+    "node_modules/lodash/_baseClamp.js"(exports, module2) {
+      function baseClamp(number, lower, upper) {
+        if (number === number) {
+          if (upper !== void 0) {
+            number = number <= upper ? number : upper;
+          }
+          if (lower !== void 0) {
+            number = number >= lower ? number : lower;
+          }
+        }
+        return number;
+      }
+      module2.exports = baseClamp;
+    }
+  });
+
+  // node_modules/lodash/clamp.js
+  var require_clamp = __commonJS({
+    "node_modules/lodash/clamp.js"(exports, module2) {
+      var baseClamp = require_baseClamp();
+      var toNumber = require_toNumber();
+      function clamp2(number, lower, upper) {
+        if (upper === void 0) {
+          upper = lower;
+          lower = void 0;
+        }
+        if (upper !== void 0) {
+          upper = toNumber(upper);
+          upper = upper === upper ? upper : 0;
+        }
+        if (lower !== void 0) {
+          lower = toNumber(lower);
+          lower = lower === lower ? lower : 0;
+        }
+        return baseClamp(toNumber(number), lower, upper);
+      }
+      module2.exports = clamp2;
+    }
+  });
+
+  // packages/systems/ix2/engine/logic/IX2VanillaEvents.ts
+  var import_flow, import_get, import_clamp, import_shared5, MOUSE_CLICK, MOUSE_SECOND_CLICK, MOUSE_DOWN, MOUSE_UP, MOUSE_OVER, MOUSE_OUT, DROPDOWN_CLOSE, DROPDOWN_OPEN, SLIDER_ACTIVE, SLIDER_INACTIVE, TAB_ACTIVE, TAB_INACTIVE, NAVBAR_CLOSE, NAVBAR_OPEN, MOUSE_MOVE, PAGE_SCROLL_DOWN, SCROLL_INTO_VIEW, SCROLL_OUT_OF_VIEW, PAGE_SCROLL_UP, SCROLLING_IN_VIEW, PAGE_FINISH, ECOMMERCE_CART_CLOSE, ECOMMERCE_CART_OPEN, PAGE_START, PAGE_SCROLL, COMPONENT_ACTIVE, COMPONENT_INACTIVE, COLON_DELIMITER3, getNamespacedParameterId2, composableFilter, isElement, containsElement, isOrContainsElement, getAutoStopEvent, hasAutoStopEvent, actionGroupCreator, withFilter, baseActionGroupOptions, baseActivityActionGroupOptions, SCROLL_EVENT_TYPES, MOUSE_OVER_OUT_TYPES, baseScrollActionGroupOptions, AUTO_STOP_DISABLED_EVENTS, getDocumentState, areBoxesIntersecting, isElementHovered, isElementVisible, whenComponentActiveChange, whenElementHoverChange, whenElementVisibiltyChange, whenScrollDirectionChange, pointIntersects, whenPageLoadFinish, whenPageLoadStart, whenClickCountChange, getComponentActiveOptions, getComponentInactiveOptions, scrollIntoOutOfViewOptions, MOUSE_OUT_ROUND_THRESHOLD, IX2VanillaEvents_default;
+  var init_IX2VanillaEvents = __esm({
+    "packages/systems/ix2/engine/logic/IX2VanillaEvents.ts"() {
+      "use strict";
+      import_flow = __toESM(require_flow());
+      import_get = __toESM(require_get());
+      import_clamp = __toESM(require_clamp());
+      init_shared_constants();
+      init_IX2VanillaEngine();
+      init_IX2EngineActions();
+      import_shared5 = __toESM(require_shared2());
+      ({
+        MOUSE_CLICK,
+        MOUSE_SECOND_CLICK,
+        MOUSE_DOWN,
+        MOUSE_UP,
+        MOUSE_OVER,
+        MOUSE_OUT,
+        DROPDOWN_CLOSE,
+        DROPDOWN_OPEN,
+        SLIDER_ACTIVE,
+        SLIDER_INACTIVE,
+        TAB_ACTIVE,
+        TAB_INACTIVE,
+        NAVBAR_CLOSE,
+        NAVBAR_OPEN,
+        MOUSE_MOVE,
+        PAGE_SCROLL_DOWN,
+        SCROLL_INTO_VIEW,
+        SCROLL_OUT_OF_VIEW,
+        PAGE_SCROLL_UP,
+        SCROLLING_IN_VIEW,
+        PAGE_FINISH,
+        ECOMMERCE_CART_CLOSE,
+        ECOMMERCE_CART_OPEN,
+        PAGE_START,
+        PAGE_SCROLL
+      } = EventTypeConsts);
+      COMPONENT_ACTIVE = "COMPONENT_ACTIVE";
+      COMPONENT_INACTIVE = "COMPONENT_INACTIVE";
+      ({ COLON_DELIMITER: COLON_DELIMITER3 } = IX2EngineConstants_exports);
+      ({ getNamespacedParameterId: getNamespacedParameterId2 } = import_shared5.IX2VanillaUtils);
+      composableFilter = (predicate) => (options) => {
+        if (typeof options === "object" && predicate(options)) {
+          return true;
+        }
+        return options;
+      };
+      isElement = composableFilter(({ element, nativeEvent }) => {
+        return element === nativeEvent.target;
+      });
+      containsElement = composableFilter(({ element, nativeEvent }) => {
+        return element.contains(nativeEvent.target);
+      });
+      isOrContainsElement = (0, import_flow.default)([isElement, containsElement]);
+      getAutoStopEvent = (store, autoStopEventId) => {
+        if (autoStopEventId) {
+          const { ixData: ixData2 } = store.getState();
+          const { events } = ixData2;
+          const eventToStop = events[autoStopEventId];
+          if (eventToStop && !AUTO_STOP_DISABLED_EVENTS[eventToStop.eventTypeId]) {
+            return eventToStop;
+          }
+        }
+        return null;
+      };
+      hasAutoStopEvent = ({ store, event }) => {
+        const { action: eventAction } = event;
+        const { autoStopEventId } = eventAction.config;
+        return Boolean(getAutoStopEvent(store, autoStopEventId));
+      };
+      actionGroupCreator = ({ store, event, element, eventStateKey }, state) => {
+        const { action: eventAction, id: eventId } = event;
+        const { actionListId, autoStopEventId } = eventAction.config;
+        const eventToStop = getAutoStopEvent(store, autoStopEventId);
+        if (eventToStop) {
+          stopActionGroup({
+            store,
+            eventId: autoStopEventId,
+            eventTarget: element,
+            eventStateKey: autoStopEventId + COLON_DELIMITER3 + eventStateKey.split(COLON_DELIMITER3)[1],
+            actionListId: (0, import_get.default)(eventToStop, "action.config.actionListId")
+          });
+        }
+        stopActionGroup({
+          store,
+          eventId,
+          eventTarget: element,
+          eventStateKey,
+          actionListId
+        });
+        startActionGroup({
+          store,
+          eventId,
+          eventTarget: element,
+          eventStateKey,
+          actionListId
+        });
+        return state;
+      };
+      withFilter = (filter, handler) => (options, state) => filter(options, state) === true ? handler(options, state) : state;
+      baseActionGroupOptions = {
+        handler: withFilter(isOrContainsElement, actionGroupCreator)
+      };
+      baseActivityActionGroupOptions = {
+        ...baseActionGroupOptions,
+        types: [COMPONENT_ACTIVE, COMPONENT_INACTIVE].join(" ")
+      };
+      SCROLL_EVENT_TYPES = [
+        { target: window, types: "resize orientationchange", throttle: true },
+        {
+          target: document,
+          types: "scroll wheel readystatechange IX2_PAGE_UPDATE",
+          throttle: true
+        }
+      ];
+      MOUSE_OVER_OUT_TYPES = "mouseover mouseout";
+      baseScrollActionGroupOptions = {
+        types: SCROLL_EVENT_TYPES
+      };
+      AUTO_STOP_DISABLED_EVENTS = {
+        PAGE_START,
+        PAGE_FINISH
+      };
+      getDocumentState = (() => {
+        const supportOffset = window.pageXOffset !== void 0;
+        const isCSS1Compat = document.compatMode === "CSS1Compat";
+        const rootElement = isCSS1Compat ? document.documentElement : document.body;
+        return () => ({
+          scrollLeft: supportOffset ? window.pageXOffset : rootElement.scrollLeft,
+          scrollTop: supportOffset ? window.pageYOffset : rootElement.scrollTop,
+          // required to remove elasticity in Safari scrolling.
+          stiffScrollTop: (0, import_clamp.default)(
+            supportOffset ? window.pageYOffset : rootElement.scrollTop,
+            0,
+            rootElement.scrollHeight - window.innerHeight
+          ),
+          scrollWidth: rootElement.scrollWidth,
+          scrollHeight: rootElement.scrollHeight,
+          clientWidth: rootElement.clientWidth,
+          clientHeight: rootElement.clientHeight,
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight
+        });
+      })();
+      areBoxesIntersecting = (a, b) => !(a.left > b.right || a.right < b.left || a.top > b.bottom || a.bottom < b.top);
+      isElementHovered = ({ element, nativeEvent }) => {
+        const { type, target, relatedTarget } = nativeEvent;
+        const containsTarget = element.contains(target);
+        if (type === "mouseover" && containsTarget) {
+          return true;
+        }
+        const containsRelated = element.contains(relatedTarget);
+        if (type === "mouseout" && containsTarget && containsRelated) {
+          return true;
+        }
+        return false;
+      };
+      isElementVisible = (options) => {
+        const {
+          element,
+          event: { config }
+        } = options;
+        const { clientWidth, clientHeight } = getDocumentState();
+        const scrollOffsetValue = config.scrollOffsetValue;
+        const scrollOffsetUnit = config.scrollOffsetUnit;
+        const isPX = scrollOffsetUnit === "PX";
+        const offsetPadding = isPX ? scrollOffsetValue : clientHeight * (scrollOffsetValue || 0) / 100;
+        return areBoxesIntersecting(element.getBoundingClientRect(), {
+          left: 0,
+          top: offsetPadding,
+          right: clientWidth,
+          bottom: clientHeight - offsetPadding
+        });
+      };
+      whenComponentActiveChange = // @ts-expect-error - TS7006 - Parameter 'handler' implicitly has an 'any' type.
+      (handler) => (options, oldState) => {
+        const { type } = options.nativeEvent;
+        const isActive = [COMPONENT_ACTIVE, COMPONENT_INACTIVE].indexOf(type) !== -1 ? type === COMPONENT_ACTIVE : oldState.isActive;
+        const newState = {
+          ...oldState,
+          isActive
+        };
+        if (!oldState || newState.isActive !== oldState.isActive) {
+          return handler(options, newState) || newState;
+        }
+        return newState;
+      };
+      whenElementHoverChange = (handler) => (options, oldState) => {
+        const newState = {
+          elementHovered: isElementHovered(options)
+        };
+        if (oldState ? newState.elementHovered !== oldState.elementHovered : newState.elementHovered) {
+          return handler(options, newState) || newState;
+        }
+        return newState;
+      };
+      whenElementVisibiltyChange = (handler) => (options, oldState) => {
+        const newState = {
+          ...oldState,
+          elementVisible: isElementVisible(options)
+        };
+        if (oldState ? newState.elementVisible !== oldState.elementVisible : newState.elementVisible) {
+          return handler(options, newState) || newState;
+        }
+        return newState;
+      };
+      whenScrollDirectionChange = // @ts-expect-error - TS7006 - Parameter 'handler' implicitly has an 'any' type.
+      (handler) => (options, oldState = {}) => {
+        const {
+          stiffScrollTop: scrollTop,
+          scrollHeight,
+          innerHeight
+        } = getDocumentState();
+        const {
+          event: { config, eventTypeId }
+        } = options;
+        const { scrollOffsetValue, scrollOffsetUnit } = config;
+        const isPX = scrollOffsetUnit === "PX";
+        const scrollHeightBounds = scrollHeight - innerHeight;
+        const percentTop = Number((scrollTop / scrollHeightBounds).toFixed(2));
+        if (oldState && oldState.percentTop === percentTop) {
+          return oldState;
+        }
+        const scrollTopPadding = (isPX ? scrollOffsetValue : innerHeight * (scrollOffsetValue || 0) / 100) / scrollHeightBounds;
+        let scrollingDown;
+        let scrollDirectionChanged;
+        let anchorTop = 0;
+        if (oldState) {
+          scrollingDown = percentTop > oldState.percentTop;
+          scrollDirectionChanged = oldState.scrollingDown !== scrollingDown;
+          anchorTop = scrollDirectionChanged ? percentTop : oldState.anchorTop;
+        }
+        const inBounds = eventTypeId === PAGE_SCROLL_DOWN ? percentTop >= anchorTop + scrollTopPadding : percentTop <= anchorTop - scrollTopPadding;
+        const newState = {
+          ...oldState,
+          percentTop,
+          inBounds,
+          anchorTop,
+          scrollingDown
+        };
+        if (oldState && inBounds && // @ts-expect-error - TS2339 - Property 'inBounds' does not exist on type '{}'.
+        (scrollDirectionChanged || newState.inBounds !== oldState.inBounds)) {
+          return handler(options, newState) || newState;
+        }
+        return newState;
+      };
+      pointIntersects = (point, rect) => point.left > rect.left && point.left < rect.right && point.top > rect.top && point.top < rect.bottom;
+      whenPageLoadFinish = (handler) => (options, oldState) => {
+        const newState = {
+          finished: document.readyState === "complete"
+        };
+        if (newState.finished && !(oldState && oldState.finshed)) {
+          handler(options);
+        }
+        return newState;
+      };
+      whenPageLoadStart = (handler) => (options, oldState) => {
+        const newState = {
+          started: true
+        };
+        if (!oldState) {
+          handler(options);
+        }
+        return newState;
+      };
+      whenClickCountChange = (handler) => (options, oldState = { clickCount: 0 }) => {
+        const newState = {
+          clickCount: oldState.clickCount % 2 + 1
+        };
+        if (newState.clickCount !== oldState.clickCount) {
+          return handler(options, newState) || newState;
+        }
+        return newState;
+      };
+      getComponentActiveOptions = (allowNestedChildrenEvents = true) => ({
+        ...baseActivityActionGroupOptions,
+        handler: withFilter(
+          allowNestedChildrenEvents ? isOrContainsElement : isElement,
+          // @ts-expect-error - TS7006 - Parameter 'options' implicitly has an 'any' type. | TS7006 - Parameter 'state' implicitly has an 'any' type.
+          whenComponentActiveChange((options, state) => {
+            return state.isActive ? baseActionGroupOptions.handler(options, state) : state;
+          })
+        )
+      });
+      getComponentInactiveOptions = (allowNestedChildrenEvents = true) => ({
+        ...baseActivityActionGroupOptions,
+        handler: withFilter(
+          allowNestedChildrenEvents ? isOrContainsElement : isElement,
+          // @ts-expect-error - TS7006 - Parameter 'options' implicitly has an 'any' type. | TS7006 - Parameter 'state' implicitly has an 'any' type.
+          whenComponentActiveChange((options, state) => {
+            return !state.isActive ? baseActionGroupOptions.handler(options, state) : state;
+          })
+        )
+      });
+      scrollIntoOutOfViewOptions = {
+        ...baseScrollActionGroupOptions,
+        handler: whenElementVisibiltyChange((options, state) => {
+          const { elementVisible } = state;
+          const { event, store } = options;
+          const { ixData: ixData2 } = store.getState();
+          const { events } = ixData2;
+          if (!events[event.action.config.autoStopEventId] && state.triggered) {
+            return state;
+          }
+          if (event.eventTypeId === SCROLL_INTO_VIEW === elementVisible) {
+            actionGroupCreator(options);
+            return {
+              ...state,
+              triggered: true
+            };
+          } else {
+            return state;
+          }
+        })
+      };
+      MOUSE_OUT_ROUND_THRESHOLD = 0.05;
+      IX2VanillaEvents_default = {
+        [SLIDER_ACTIVE]: getComponentActiveOptions(),
+        [SLIDER_INACTIVE]: getComponentInactiveOptions(),
+        [DROPDOWN_OPEN]: getComponentActiveOptions(),
+        [DROPDOWN_CLOSE]: getComponentInactiveOptions(),
+        // navbar elements may contain nested components in the menu. To prevent activity misfires, only listed for activity
+        // events where the target is the navbar element, and ignore children that dispatch activitiy events.
+        [NAVBAR_OPEN]: getComponentActiveOptions(false),
+        [NAVBAR_CLOSE]: getComponentInactiveOptions(false),
+        [TAB_ACTIVE]: getComponentActiveOptions(),
+        [TAB_INACTIVE]: getComponentInactiveOptions(),
+        [ECOMMERCE_CART_OPEN]: {
+          types: "ecommerce-cart-open",
+          handler: withFilter(isOrContainsElement, actionGroupCreator)
+        },
+        [ECOMMERCE_CART_CLOSE]: {
+          types: "ecommerce-cart-close",
+          handler: withFilter(isOrContainsElement, actionGroupCreator)
+        },
+        [MOUSE_CLICK]: {
+          types: "click",
+          handler: withFilter(
+            isOrContainsElement,
+            whenClickCountChange((options, { clickCount }) => {
+              if (hasAutoStopEvent(options)) {
+                clickCount === 1 && actionGroupCreator(options);
+              } else {
+                actionGroupCreator(options);
+              }
+            })
+          )
+        },
+        [MOUSE_SECOND_CLICK]: {
+          types: "click",
+          handler: withFilter(
+            isOrContainsElement,
+            whenClickCountChange((options, { clickCount }) => {
+              if (clickCount === 2) {
+                actionGroupCreator(options);
+              }
+            })
+          )
+        },
+        [MOUSE_DOWN]: {
+          ...baseActionGroupOptions,
+          types: "mousedown"
+        },
+        [MOUSE_UP]: {
+          ...baseActionGroupOptions,
+          types: "mouseup"
+        },
+        [MOUSE_OVER]: {
+          types: MOUSE_OVER_OUT_TYPES,
+          handler: withFilter(
+            isOrContainsElement,
+            whenElementHoverChange((options, state) => {
+              if (state.elementHovered) {
+                actionGroupCreator(options);
+              }
+            })
+          )
+        },
+        [MOUSE_OUT]: {
+          types: MOUSE_OVER_OUT_TYPES,
+          handler: withFilter(
+            isOrContainsElement,
+            whenElementHoverChange((options, state) => {
+              if (!state.elementHovered) {
+                actionGroupCreator(options);
+              }
+            })
+          )
+        },
+        [MOUSE_MOVE]: {
+          types: "mousemove mouseout scroll",
+          handler: ({ store, element, eventConfig, nativeEvent, eventStateKey }, state = { clientX: 0, clientY: 0, pageX: 0, pageY: 0 }) => {
+            const {
+              basedOn,
+              selectedAxis,
+              continuousParameterGroupId,
+              reverse,
+              restingState = 0
+            } = eventConfig;
+            const {
+              clientX = state.clientX,
+              clientY = state.clientY,
+              pageX = state.pageX,
+              pageY = state.pageY
+            } = nativeEvent;
+            const isXAxis = selectedAxis === "X_AXIS";
+            const isMouseOut = nativeEvent.type === "mouseout";
+            let value = restingState / 100;
+            let namespacedParameterId = continuousParameterGroupId;
+            let elementHovered = false;
+            switch (basedOn) {
+              case EventBasedOn.VIEWPORT: {
+                value = isXAxis ? Math.min(clientX, window.innerWidth) / window.innerWidth : Math.min(clientY, window.innerHeight) / window.innerHeight;
+                break;
+              }
+              case EventBasedOn.PAGE: {
+                const { scrollLeft, scrollTop, scrollWidth, scrollHeight } = getDocumentState();
+                value = isXAxis ? Math.min(scrollLeft + pageX, scrollWidth) / scrollWidth : Math.min(scrollTop + pageY, scrollHeight) / scrollHeight;
+                break;
+              }
+              case EventBasedOn.ELEMENT:
+              default: {
+                namespacedParameterId = getNamespacedParameterId2(
+                  eventStateKey,
+                  continuousParameterGroupId
+                );
+                const isMouseEvent = nativeEvent.type.indexOf("mouse") === 0;
+                if (isMouseEvent && isOrContainsElement({ element, nativeEvent }) !== true) {
+                  break;
+                }
+                const rect = element.getBoundingClientRect();
+                const { left, top, width, height } = rect;
+                if (!isMouseEvent && !pointIntersects({ left: clientX, top: clientY }, rect)) {
+                  break;
+                }
+                elementHovered = true;
+                value = isXAxis ? (clientX - left) / width : (clientY - top) / height;
+                break;
+              }
+            }
+            if (isMouseOut && (value > 1 - MOUSE_OUT_ROUND_THRESHOLD || value < MOUSE_OUT_ROUND_THRESHOLD)) {
+              value = Math.round(value);
+            }
+            if (basedOn !== EventBasedOn.ELEMENT || elementHovered || // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-expect-error
+            elementHovered !== state.elementHovered) {
+              value = reverse ? 1 - value : value;
+              store.dispatch(parameterChanged(namespacedParameterId, value));
+            }
+            return {
+              elementHovered,
+              clientX,
+              clientY,
+              pageX,
+              pageY
+            };
+          }
+        },
+        [PAGE_SCROLL]: {
+          types: SCROLL_EVENT_TYPES,
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          handler: ({ store, eventConfig }) => {
+            const { continuousParameterGroupId, reverse } = eventConfig;
+            const { scrollTop, scrollHeight, clientHeight } = getDocumentState();
+            let value = scrollTop / (scrollHeight - clientHeight);
+            value = reverse ? 1 - value : value;
+            store.dispatch(parameterChanged(continuousParameterGroupId, value));
+          }
+        },
+        [SCROLLING_IN_VIEW]: {
+          types: SCROLL_EVENT_TYPES,
+          handler: ({ element, store, eventConfig, eventStateKey }, state = { scrollPercent: 0 }) => {
+            const {
+              scrollLeft,
+              scrollTop,
+              scrollWidth,
+              scrollHeight,
+              clientHeight: visibleHeight
+            } = getDocumentState();
+            const {
+              basedOn,
+              selectedAxis,
+              continuousParameterGroupId,
+              startsEntering,
+              startsExiting,
+              addEndOffset,
+              addStartOffset,
+              addOffsetValue = 0,
+              endOffsetValue = 0
+            } = eventConfig;
+            const isXAxis = selectedAxis === "X_AXIS";
+            if (basedOn === EventBasedOn.VIEWPORT) {
+              const value = isXAxis ? scrollLeft / scrollWidth : scrollTop / scrollHeight;
+              if (value !== state.scrollPercent) {
+                store.dispatch(parameterChanged(continuousParameterGroupId, value));
+              }
+              return {
+                scrollPercent: value
+              };
+            } else {
+              const namespacedParameterId = getNamespacedParameterId2(
+                eventStateKey,
+                continuousParameterGroupId
+              );
+              const elementRect = element.getBoundingClientRect();
+              let offsetStartPerc = (addStartOffset ? addOffsetValue : 0) / 100;
+              let offsetEndPerc = (addEndOffset ? endOffsetValue : 0) / 100;
+              offsetStartPerc = startsEntering ? offsetStartPerc : 1 - offsetStartPerc;
+              offsetEndPerc = startsExiting ? offsetEndPerc : 1 - offsetEndPerc;
+              const offsetElementTop = elementRect.top + Math.min(elementRect.height * offsetStartPerc, visibleHeight);
+              const offsetElementBottom = elementRect.top + elementRect.height * offsetEndPerc;
+              const offsetHeight = offsetElementBottom - offsetElementTop;
+              const fixedScrollHeight = Math.min(
+                visibleHeight + offsetHeight,
+                scrollHeight
+              );
+              const fixedScrollTop = Math.min(
+                Math.max(0, visibleHeight - offsetElementTop),
+                fixedScrollHeight
+              );
+              const fixedScrollPerc = fixedScrollTop / fixedScrollHeight;
+              if (fixedScrollPerc !== state.scrollPercent) {
+                store.dispatch(
+                  parameterChanged(namespacedParameterId, fixedScrollPerc)
+                );
+              }
+              return {
+                scrollPercent: fixedScrollPerc
+              };
+            }
+          }
+        },
+        [SCROLL_INTO_VIEW]: scrollIntoOutOfViewOptions,
+        [SCROLL_OUT_OF_VIEW]: scrollIntoOutOfViewOptions,
+        [PAGE_SCROLL_DOWN]: {
+          ...baseScrollActionGroupOptions,
+          // @ts-expect-error - TS7006 - Parameter 'options' implicitly has an 'any' type. | TS7006 - Parameter 'state' implicitly has an 'any' type.
+          handler: whenScrollDirectionChange((options, state) => {
+            if (state.scrollingDown) {
+              actionGroupCreator(options);
+            }
+          })
+        },
+        [PAGE_SCROLL_UP]: {
+          ...baseScrollActionGroupOptions,
+          // @ts-expect-error - TS7006 - Parameter 'options' implicitly has an 'any' type. | TS7006 - Parameter 'state' implicitly has an 'any' type.
+          handler: whenScrollDirectionChange((options, state) => {
+            if (!state.scrollingDown) {
+              actionGroupCreator(options);
+            }
+          })
+        },
+        [PAGE_FINISH]: {
+          types: "readystatechange IX2_PAGE_UPDATE",
+          handler: withFilter(isElement, whenPageLoadFinish(actionGroupCreator))
+        },
+        [PAGE_START]: {
+          types: "readystatechange IX2_PAGE_UPDATE",
+          handler: withFilter(isElement, whenPageLoadStart(actionGroupCreator))
+        }
+      };
+    }
+  });
+
+  // packages/systems/ix2/engine/logic/IX2VanillaEngine.ts
+  var IX2VanillaEngine_exports = {};
+  __export(IX2VanillaEngine_exports, {
+    observeRequests: () => observeRequests,
+    startActionGroup: () => startActionGroup,
+    startEngine: () => startEngine,
+    stopActionGroup: () => stopActionGroup,
+    stopAllActionGroups: () => stopAllActionGroups,
+    stopEngine: () => stopEngine
+  });
+  function observeRequests(store) {
+    observeStore2({
+      store,
+      select: ({
+        ixRequest: ixRequest2
+      }) => ixRequest2.preview,
+      onChange: handlePreviewRequest
+    });
+    observeStore2({
+      store,
+      select: ({
+        ixRequest: ixRequest2
+      }) => ixRequest2.playback,
+      onChange: handlePlaybackRequest
+    });
+    observeStore2({
+      store,
+      select: ({
+        ixRequest: ixRequest2
+      }) => ixRequest2.stop,
+      onChange: handleStopRequest
+    });
+    observeStore2({
+      store,
+      select: ({
+        ixRequest: ixRequest2
+      }) => ixRequest2.clear,
+      onChange: handleClearRequest
+    });
+  }
+  function observeMediaQueryChange(store) {
+    observeStore2({
+      store,
+      select: ({
+        ixSession: ixSession2
+      }) => ixSession2.mediaQueryKey,
+      onChange: () => {
+        stopEngine(store);
+        clearAllStyles2({ store, elementApi: IX2BrowserApi_exports });
+        startEngine({ store, allowEvents: true });
+        dispatchPageUpdateEvent();
+      }
+    });
+  }
+  function observeOneRenderTick(store, onTick) {
+    const unsubscribe = observeStore2({
+      store,
+      select: ({
+        ixSession: ixSession2
+      }) => ixSession2.tick,
+      // @ts-expect-error - TS7006 - Parameter 'tick' implicitly has an 'any' type.
+      onChange: (tick) => {
+        onTick(tick);
+        unsubscribe();
+      }
+    });
+  }
+  function handlePreviewRequest({ rawData, defer }, store) {
+    const start = () => {
+      startEngine({ store, rawData, allowEvents: true });
+      dispatchPageUpdateEvent();
+    };
+    defer ? setTimeout(start, 0) : start();
+  }
+  function dispatchPageUpdateEvent() {
+    document.dispatchEvent(new CustomEvent("IX2_PAGE_UPDATE"));
+  }
+  function handlePlaybackRequest(playback, store) {
+    const {
+      actionTypeId,
+      actionListId,
+      actionItemId,
+      eventId,
+      allowEvents,
+      immediate,
+      testManual,
+      verbose = true
+    } = playback;
+    let { rawData } = playback;
+    if (actionListId && actionItemId && rawData && immediate) {
+      const actionList = rawData.actionLists[actionListId];
+      if (actionList) {
+        rawData = reduceListToGroup2({
+          actionList,
+          actionItemId,
+          rawData
+        });
+      }
+    }
+    startEngine({ store, rawData, allowEvents, testManual });
+    if (actionListId && actionTypeId === ActionTypeConsts.GENERAL_START_ACTION || isQuickEffect(actionTypeId)) {
+      stopActionGroup({ store, actionListId });
+      renderInitialGroup({ store, actionListId, eventId });
+      const started = startActionGroup({
+        store,
+        eventId,
+        actionListId,
+        immediate,
+        verbose
+      });
+      if (verbose && started) {
+        store.dispatch(
+          actionListPlaybackChanged({ actionListId, isPlaying: !immediate })
+        );
+      }
+    }
+  }
+  function handleStopRequest({ actionListId }, store) {
+    if (actionListId) {
+      stopActionGroup({ store, actionListId });
+    } else {
+      stopAllActionGroups({ store });
+    }
+    stopEngine(store);
+  }
+  function handleClearRequest(state, store) {
+    stopEngine(store);
+    clearAllStyles2({ store, elementApi: IX2BrowserApi_exports });
+  }
+  function startEngine({
+    store,
+    rawData,
+    allowEvents,
+    testManual
+  }) {
+    const { ixSession: ixSession2 } = store.getState();
+    if (rawData) {
+      store.dispatch(rawDataImported(rawData));
+    }
+    if (!ixSession2.active) {
+      store.dispatch(
+        sessionInitialized({
+          hasBoundaryNodes: Boolean(document.querySelector(BOUNDARY_SELECTOR2)),
+          reducedMotion: document.body.hasAttribute("data-wf-ix-vacation") && window.matchMedia("(prefers-reduced-motion)").matches
+        })
+      );
+      if (allowEvents) {
+        bindEvents(store);
+        addDocumentClass();
+        if (store.getState().ixSession.hasDefinedMediaQueries) {
+          observeMediaQueryChange(store);
+        }
+      }
+      store.dispatch(sessionStarted());
+      startRenderLoop(store, testManual);
+    }
+  }
+  function addDocumentClass() {
+    const { documentElement } = document;
+    if (documentElement.className.indexOf(W_MOD_IX2) === -1) {
+      documentElement.className += ` ${W_MOD_IX2}`;
+    }
+  }
+  function startRenderLoop(store, testManual) {
+    const handleFrame = (now) => {
+      const { ixSession: ixSession2, ixParameters: ixParameters2 } = store.getState();
+      if (ixSession2.active) {
+        store.dispatch(animationFrameChanged(now, ixParameters2));
+        if (testManual) {
+          observeOneRenderTick(store, handleFrame);
+        } else {
+          requestAnimationFrame(handleFrame);
+        }
+      }
+    };
+    handleFrame(window.performance.now());
+  }
+  function stopEngine(store) {
+    const { ixSession: ixSession2 } = store.getState();
+    if (ixSession2.active) {
+      const { eventListeners } = ixSession2;
+      eventListeners.forEach(clearEventListener);
+      clearObjectCache2();
+      store.dispatch(sessionStopped());
+    }
+  }
+  function clearEventListener({ target, listenerParams }) {
+    target.removeEventListener.apply(target, listenerParams);
+  }
+  function createGroupInstances({
+    // @ts-expect-error - TS7031 - Binding element 'store' implicitly has an 'any' type.
+    store,
+    // @ts-expect-error - TS7031 - Binding element 'eventStateKey' implicitly has an 'any' type.
+    eventStateKey,
+    // @ts-expect-error - TS7031 - Binding element 'eventTarget' implicitly has an 'any' type.
+    eventTarget,
+    // @ts-expect-error - TS7031 - Binding element 'eventId' implicitly has an 'any' type.
+    eventId,
+    // @ts-expect-error - TS7031 - Binding element 'eventConfig' implicitly has an 'any' type.
+    eventConfig,
+    // @ts-expect-error - TS7031 - Binding element 'actionListId' implicitly has an 'any' type.
+    actionListId,
+    // @ts-expect-error - TS7031 - Binding element 'parameterGroup' implicitly has an 'any' type.
+    parameterGroup,
+    // @ts-expect-error - TS7031 - Binding element 'smoothing' implicitly has an 'any' type.
+    smoothing,
+    // @ts-expect-error - TS7031 - Binding element 'restingValue' implicitly has an 'any' type.
+    restingValue
+  }) {
+    const { ixData: ixData2, ixSession: ixSession2 } = store.getState();
+    const { events } = ixData2;
+    const event = events[eventId];
+    const { eventTypeId } = event;
+    const targetCache = {};
+    const instanceActionGroups = {};
+    const instanceConfigs = [];
+    const { continuousActionGroups } = parameterGroup;
+    let { id: parameterId } = parameterGroup;
+    if (shouldNamespaceEventParameter2(eventTypeId, eventConfig)) {
+      parameterId = getNamespacedParameterId3(eventStateKey, parameterId);
+    }
+    const eventElementRoot = ixSession2.hasBoundaryNodes && eventTarget ? getClosestElement(eventTarget, BOUNDARY_SELECTOR2) : null;
+    continuousActionGroups.forEach((actionGroup) => {
+      const { keyframe, actionItems } = actionGroup;
+      actionItems.forEach((actionItem) => {
+        const { actionTypeId } = actionItem;
+        const { target } = actionItem.config;
+        if (!target) {
+          return;
+        }
+        const elementRoot = target.boundaryMode ? eventElementRoot : null;
+        const key = stringifyTarget2(target) + COLON_DELIMITER4 + actionTypeId;
+        instanceActionGroups[key] = appendActionItem(
+          instanceActionGroups[key],
+          keyframe,
+          actionItem
+        );
+        if (!targetCache[key]) {
+          targetCache[key] = true;
+          const { config } = actionItem;
+          getAffectedElements2({
+            config,
+            event,
+            eventTarget,
+            elementRoot,
+            elementApi: IX2BrowserApi_exports
+          }).forEach((element) => {
+            instanceConfigs.push({ element, key });
+          });
+        }
+      });
+    });
+    instanceConfigs.forEach(({ element, key }) => {
+      const actionGroups = instanceActionGroups[key];
+      const actionItem = (0, import_get2.default)(actionGroups, `[0].actionItems[0]`, {});
+      const { actionTypeId } = actionItem;
+      const pluginInstance = isPluginType2(actionTypeId) ? createPluginInstance2(actionTypeId)(element, actionItem) : null;
+      const destination = getDestinationValues2(
+        { element, actionItem, elementApi: IX2BrowserApi_exports },
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        pluginInstance
+      );
+      createInstance({
+        store,
+        element,
+        eventId,
+        actionListId,
+        actionItem,
+        destination,
+        continuous: true,
+        parameterId,
+        actionGroups,
+        smoothing,
+        restingValue,
+        pluginInstance
+      });
+    });
+  }
+  function appendActionItem(actionGroups = [], keyframe, actionItem) {
+    const newActionGroups = [...actionGroups];
+    let groupIndex;
+    newActionGroups.some((group, index) => {
+      if (group.keyframe === keyframe) {
+        groupIndex = index;
+        return true;
+      }
+      return false;
+    });
+    if (groupIndex == null) {
+      groupIndex = newActionGroups.length;
+      newActionGroups.push({
+        keyframe,
+        actionItems: []
+      });
+    }
+    newActionGroups[groupIndex].actionItems.push(actionItem);
+    return newActionGroups;
+  }
+  function bindEvents(store) {
+    const { ixData: ixData2 } = store.getState();
+    const { eventTypeMap } = ixData2;
+    updateViewportWidth(store);
+    (0, import_forEach.default)(eventTypeMap, (events, key) => {
+      const logic = IX2VanillaEvents_default[key];
+      if (!logic) {
+        console.warn(`IX2 event type not configured: ${key}`);
+        return;
+      }
+      bindEventType({
+        // @ts-expect-error - TS7031 - Binding element 'logic' implicitly has an 'any' type.
+        logic,
+        store,
+        events
+      });
+    });
+    const { ixSession: ixSession2 } = store.getState();
+    if (ixSession2.eventListeners.length) {
+      bindResizeEvents(store);
+    }
+  }
+  function bindResizeEvents(store) {
+    const handleResize = () => {
+      updateViewportWidth(store);
+    };
+    WINDOW_RESIZE_EVENTS.forEach((type) => {
+      window.addEventListener(type, handleResize);
+      store.dispatch(eventListenerAdded(window, [type, handleResize]));
+    });
+    handleResize();
+  }
+  function updateViewportWidth(store) {
+    const { ixSession: ixSession2, ixData: ixData2 } = store.getState();
+    const width = window.innerWidth;
+    if (width !== ixSession2.viewportWidth) {
+      const { mediaQueries } = ixData2;
+      store.dispatch(viewportWidthChanged({ width, mediaQueries }));
+    }
+  }
+  function bindEventType({ logic, store, events }) {
+    injectBehaviorCSSFixes(events);
+    const { types: eventTypes, handler: eventHandler } = logic;
+    const { ixData: ixData2 } = store.getState();
+    const { actionLists } = ixData2;
+    const eventTargets = mapFoundValues(events, getAffectedForEvent);
+    if (!(0, import_size.default)(eventTargets)) {
+      return;
+    }
+    (0, import_forEach.default)(eventTargets, (elements, key) => {
+      const event = events[key];
+      const {
+        action: eventAction,
+        id: eventId,
+        mediaQueries = ixData2.mediaQueryKeys
+      } = event;
+      const { actionListId } = eventAction.config;
+      if (!mediaQueriesEqual2(mediaQueries, ixData2.mediaQueryKeys)) {
+        store.dispatch(mediaQueriesDefined());
+      }
+      if (eventAction.actionTypeId === ActionTypeConsts.GENERAL_CONTINUOUS_ACTION) {
+        const configs = Array.isArray(event.config) ? event.config : [event.config];
+        configs.forEach((eventConfig) => {
+          const { continuousParameterGroupId } = eventConfig;
+          const paramGroups = (0, import_get2.default)(
+            actionLists,
+            `${actionListId}.continuousParameterGroups`,
+            []
+          );
+          const parameterGroup = (0, import_find2.default)(
+            paramGroups,
+            ({ id }) => id === continuousParameterGroupId
+          );
+          const smoothing = (eventConfig.smoothing || 0) / 100;
+          const restingValue = (eventConfig.restingState || 0) / 100;
+          if (!parameterGroup) {
+            return;
+          }
+          elements.forEach((eventTarget, index) => {
+            const eventStateKey = eventId + COLON_DELIMITER4 + index;
+            createGroupInstances({
+              store,
+              eventStateKey,
+              eventTarget,
+              eventId,
+              eventConfig,
+              actionListId,
+              parameterGroup,
+              smoothing,
+              restingValue
+            });
+          });
+        });
+      }
+      if (eventAction.actionTypeId === ActionTypeConsts.GENERAL_START_ACTION || isQuickEffect(eventAction.actionTypeId)) {
+        renderInitialGroup({ store, actionListId, eventId });
+      }
+    });
+    const handleEvent = (nativeEvent) => {
+      const { ixSession: ixSession2 } = store.getState();
+      forEachEventTarget(eventTargets, (element, eventId, eventStateKey) => {
+        const event = events[eventId];
+        const oldState = ixSession2.eventState[eventStateKey];
+        const { action: eventAction, mediaQueries = ixData2.mediaQueryKeys } = event;
+        if (!shouldAllowMediaQuery2(mediaQueries, ixSession2.mediaQueryKey)) {
+          return;
+        }
+        const handleEventWithConfig = (eventConfig = {}) => {
+          const newState = eventHandler(
+            {
+              store,
+              element,
+              event,
+              eventConfig,
+              nativeEvent,
+              eventStateKey
+            },
+            oldState
+          );
+          if (!shallowEqual2(newState, oldState)) {
+            store.dispatch(eventStateChanged(eventStateKey, newState));
+          }
+        };
+        if (eventAction.actionTypeId === ActionTypeConsts.GENERAL_CONTINUOUS_ACTION) {
+          const configs = Array.isArray(event.config) ? event.config : [event.config];
+          configs.forEach(handleEventWithConfig);
+        } else {
+          handleEventWithConfig();
+        }
+      });
+    };
+    const handleEventThrottled = (0, import_throttle.default)(handleEvent, THROTTLED_EVENT_WAIT);
+    const addListeners = ({
+      target = document,
+      // @ts-expect-error - TS7031 - Binding element 'types' implicitly has an 'any' type.
+      types,
+      // @ts-expect-error - TS7031 - Binding element 'shouldThrottle' implicitly has an 'any' type.
+      throttle: shouldThrottle
+    }) => {
+      types.split(" ").filter(Boolean).forEach((type) => {
+        const handlerFunc = shouldThrottle ? handleEventThrottled : handleEvent;
+        target.addEventListener(type, handlerFunc);
+        store.dispatch(eventListenerAdded(target, [type, handlerFunc]));
+      });
+    };
+    if (Array.isArray(eventTypes)) {
+      eventTypes.forEach(addListeners);
+    } else if (typeof eventTypes === "string") {
+      addListeners(logic);
+    }
+  }
+  function injectBehaviorCSSFixes(events) {
+    if (!IS_MOBILE_SAFARI) {
+      return;
+    }
+    const injectedSelectors = {};
+    let cssText = "";
+    for (const eventId in events) {
+      const { eventTypeId, target } = events[eventId];
+      const selector = getQuerySelector(target);
+      if (injectedSelectors[selector]) {
+        continue;
+      }
+      if (eventTypeId === EventTypeConsts.MOUSE_CLICK || eventTypeId === EventTypeConsts.MOUSE_SECOND_CLICK) {
+        injectedSelectors[selector] = true;
+        cssText += selector + "{cursor: pointer;touch-action: manipulation;}";
+      }
+    }
+    if (cssText) {
+      const style2 = document.createElement("style");
+      style2.textContent = cssText;
+      document.body.appendChild(style2);
+    }
+  }
+  function renderInitialGroup({
+    store,
+    actionListId,
+    eventId
+  }) {
+    const { ixData: ixData2, ixSession: ixSession2 } = store.getState();
+    const { actionLists, events } = ixData2;
+    const event = events[eventId];
+    const actionList = actionLists[actionListId];
+    if (actionList && actionList.useFirstGroupAsInitialState) {
+      const initialStateItems = (0, import_get2.default)(
+        actionList,
+        "actionItemGroups[0].actionItems",
+        []
+      );
+      const mediaQueries = (0, import_get2.default)(event, "mediaQueries", ixData2.mediaQueryKeys);
+      if (!shouldAllowMediaQuery2(mediaQueries, ixSession2.mediaQueryKey)) {
+        return;
+      }
+      initialStateItems.forEach((actionItem) => {
+        const { config: itemConfig, actionTypeId } = actionItem;
+        const config = (
+          // When useEventTarget is explicitly true, use event target/targets to query elements
+          // However, skip this condition when objectId is defined
+          // @ts-expect-error - Property 'target' does not exist on type 'never'.
+          itemConfig?.target?.useEventTarget === true && // @ts-expect-error - Property 'target' does not exist on type 'never'.
+          itemConfig?.target?.objectId == null ? (
+            // @ts-expect-error - TS18048 - 'event' is possibly 'undefined'.
+            { target: event.target, targets: event.targets }
+          ) : itemConfig
+        );
+        const itemElements = getAffectedElements2({ config, event, elementApi: IX2BrowserApi_exports });
+        const shouldUsePlugin = isPluginType2(actionTypeId);
+        itemElements.forEach((element) => {
+          const pluginInstance = shouldUsePlugin ? createPluginInstance2(actionTypeId)(element, actionItem) : null;
+          createInstance({
+            destination: getDestinationValues2(
+              { element, actionItem, elementApi: IX2BrowserApi_exports },
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-expect-error
+              pluginInstance
+            ),
+            immediate: true,
+            store,
+            element,
+            eventId,
+            actionItem,
+            actionListId,
+            pluginInstance
+          });
+        });
+      });
+    }
+  }
+  function stopAllActionGroups({ store }) {
+    const { ixInstances: ixInstances2 } = store.getState();
+    (0, import_forEach.default)(ixInstances2, (instance) => {
+      if (!instance.continuous) {
+        const { actionListId, verbose } = instance;
+        removeInstance(instance, store);
+        if (verbose) {
+          store.dispatch(
+            actionListPlaybackChanged({ actionListId, isPlaying: false })
+          );
+        }
+      }
+    });
+  }
+  function stopActionGroup({
+    // @ts-expect-error - TS7031 - Binding element 'store' implicitly has an 'any' type.
+    store,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    eventId,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    eventTarget,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    eventStateKey,
+    // @ts-expect-error - TS7031 - Binding element 'actionListId' implicitly has an 'any' type.
+    actionListId
+  }) {
+    const { ixInstances: ixInstances2, ixSession: ixSession2 } = store.getState();
+    const eventElementRoot = ixSession2.hasBoundaryNodes && eventTarget ? getClosestElement(eventTarget, BOUNDARY_SELECTOR2) : null;
+    (0, import_forEach.default)(ixInstances2, (instance) => {
+      const boundaryMode = (0, import_get2.default)(instance, "actionItem.config.target.boundaryMode");
+      const validEventKey = eventStateKey ? instance.eventStateKey === eventStateKey : true;
+      if (instance.actionListId === actionListId && instance.eventId === eventId && validEventKey) {
+        if (eventElementRoot && boundaryMode && !elementContains(eventElementRoot, instance.element)) {
+          return;
+        }
+        removeInstance(instance, store);
+        if (instance.verbose) {
+          store.dispatch(
+            actionListPlaybackChanged({ actionListId, isPlaying: false })
+          );
+        }
+      }
+    });
+  }
+  function startActionGroup({
+    // @ts-expect-error - TS7031 - Binding element 'store' implicitly has an 'any' type.
+    store,
+    // @ts-expect-error - TS7031 - Binding element 'eventId' implicitly has an 'any' type.
+    eventId,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    eventTarget,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    eventStateKey,
+    // @ts-expect-error - TS7031 - Binding element 'actionListId' implicitly has an 'any' type.
+    actionListId,
+    groupIndex = 0,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    immediate,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    verbose
+  }) {
+    const { ixData: ixData2, ixSession: ixSession2 } = store.getState();
+    const { events } = ixData2;
+    const event = events[eventId] || {};
+    const { mediaQueries = ixData2.mediaQueryKeys } = event;
+    const actionList = (0, import_get2.default)(ixData2, `actionLists.${actionListId}`, {});
+    const { actionItemGroups, useFirstGroupAsInitialState } = actionList;
+    if (!actionItemGroups || !actionItemGroups.length) {
+      return false;
+    }
+    if (groupIndex >= actionItemGroups.length && (0, import_get2.default)(event, "config.loop")) {
+      groupIndex = 0;
+    }
+    if (groupIndex === 0 && useFirstGroupAsInitialState) {
+      groupIndex++;
+    }
+    const isFirstGroup = groupIndex === 0 || groupIndex === 1 && useFirstGroupAsInitialState;
+    const instanceDelay = isFirstGroup && isQuickEffect(event.action?.actionTypeId) ? event.config.delay : void 0;
+    const actionItems = (0, import_get2.default)(actionItemGroups, [groupIndex, "actionItems"], []);
+    if (!actionItems.length) {
+      return false;
+    }
+    if (!shouldAllowMediaQuery2(mediaQueries, ixSession2.mediaQueryKey)) {
+      return false;
+    }
+    const eventElementRoot = ixSession2.hasBoundaryNodes && eventTarget ? getClosestElement(eventTarget, BOUNDARY_SELECTOR2) : null;
+    const carrierIndex = getMaxDurationItemIndex2(actionItems);
+    let groupStartResult = false;
+    actionItems.forEach((actionItem, actionIndex) => {
+      const { config, actionTypeId } = actionItem;
+      const shouldUsePlugin = isPluginType2(actionTypeId);
+      const { target } = config;
+      if (!target) {
+        return;
+      }
+      const elementRoot = target.boundaryMode ? eventElementRoot : null;
+      const elements = getAffectedElements2({
+        config,
+        event,
+        eventTarget,
+        elementRoot,
+        elementApi: IX2BrowserApi_exports
+      });
+      elements.forEach((element, elementIndex) => {
+        const pluginInstance = shouldUsePlugin ? createPluginInstance2(actionTypeId)(element, actionItem) : null;
+        const pluginDuration = shouldUsePlugin ? getPluginDuration2(actionTypeId)(element, actionItem) : null;
+        groupStartResult = true;
+        const isCarrier = carrierIndex === actionIndex && elementIndex === 0;
+        const computedStyle = getComputedStyle3({ element, actionItem });
+        const destination = getDestinationValues2(
+          { element, actionItem, elementApi: IX2BrowserApi_exports },
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          pluginInstance
+        );
+        createInstance({
+          store,
+          element,
+          actionItem,
+          eventId,
+          eventTarget,
+          eventStateKey,
+          actionListId,
+          groupIndex,
+          isCarrier,
+          computedStyle,
+          destination,
+          immediate,
+          verbose,
+          pluginInstance,
+          pluginDuration,
+          instanceDelay
+        });
+      });
+    });
+    return groupStartResult;
+  }
+  function createInstance(options) {
+    const { store, computedStyle, ...rest } = options;
+    const {
+      element,
+      actionItem,
+      immediate,
+      pluginInstance,
+      continuous,
+      restingValue,
+      eventId
+    } = rest;
+    const autoStart = !continuous;
+    const instanceId = getInstanceId2();
+    const { ixElements: ixElements3, ixSession: ixSession2, ixData: ixData2 } = store.getState();
+    const elementId = getElementId2(ixElements3, element);
+    const { refState: refState2 } = ixElements3[elementId] || {};
+    const refType = getRefType(element);
+    const skipMotion = (
+      // @ts-expect-error - TS7053 - Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ readonly TRANSFORM_MOVE: true; readonly TRANSFORM_SCALE: true; readonly TRANSFORM_ROTATE: true; readonly TRANSFORM_SKEW: true; readonly STYLE_SIZE: true; readonly STYLE_FILTER: true; readonly STYLE_FONT_VARIATION: true; }'.
+      ixSession2.reducedMotion && ReducedMotionTypes[actionItem.actionTypeId]
+    );
+    let skipToValue;
+    if (skipMotion && continuous) {
+      switch (ixData2.events[eventId]?.eventTypeId) {
+        case EventTypeConsts.MOUSE_MOVE:
+        case EventTypeConsts.MOUSE_MOVE_IN_VIEWPORT:
+          skipToValue = restingValue;
+          break;
+        default:
+          skipToValue = 0.5;
+          break;
+      }
+    }
+    const origin = getInstanceOrigin2(
+      element,
+      refState2,
+      computedStyle,
+      actionItem,
+      IX2BrowserApi_exports,
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      pluginInstance
+    );
+    store.dispatch(
+      instanceAdded({
+        instanceId,
+        elementId,
+        origin,
+        refType,
+        skipMotion,
+        skipToValue,
+        ...rest
+      })
+    );
+    dispatchCustomEvent(document.body, "ix2-animation-started", instanceId);
+    if (immediate) {
+      renderImmediateInstance(store, instanceId);
+      return;
+    }
+    observeStore2({
+      store,
+      // @ts-expect-error - TS7031 - Binding element 'ixInstances' implicitly has an 'any' type.
+      select: ({ ixInstances: ixInstances2 }) => ixInstances2[instanceId],
+      onChange: handleInstanceChange
+    });
+    if (autoStart) {
+      store.dispatch(instanceStarted(instanceId, ixSession2.tick));
+    }
+  }
+  function removeInstance(instance, store) {
+    dispatchCustomEvent(document.body, "ix2-animation-stopping", {
+      instanceId: instance.id,
+      state: store.getState()
+    });
+    const { elementId, actionItem } = instance;
+    const { ixElements: ixElements3 } = store.getState();
+    const { ref, refType } = ixElements3[elementId] || {};
+    if (refType === HTML_ELEMENT4) {
+      cleanupHTMLElement2(ref, actionItem, IX2BrowserApi_exports);
+    }
+    store.dispatch(instanceRemoved(instance.id));
+  }
+  function dispatchCustomEvent(element, eventName, detail) {
+    const event = document.createEvent("CustomEvent");
+    event.initCustomEvent(eventName, true, true, detail);
+    element.dispatchEvent(event);
+  }
+  function renderImmediateInstance(store, instanceId) {
+    const { ixParameters: ixParameters2 } = store.getState();
+    store.dispatch(instanceStarted(instanceId, 0));
+    store.dispatch(animationFrameChanged(performance.now(), ixParameters2));
+    const { ixInstances: ixInstances2 } = store.getState();
+    handleInstanceChange(ixInstances2[instanceId], store);
+  }
+  function handleInstanceChange(instance, store) {
+    const {
+      active,
+      continuous,
+      complete,
+      elementId,
+      actionItem,
+      actionTypeId,
+      renderType,
+      current,
+      groupIndex,
+      eventId,
+      eventTarget,
+      eventStateKey,
+      actionListId,
+      isCarrier,
+      styleProp,
+      verbose,
+      pluginInstance
+    } = instance;
+    const { ixData: ixData2, ixSession: ixSession2 } = store.getState();
+    const { events } = ixData2;
+    const event = events && events[eventId] ? events[eventId] : {};
+    const { mediaQueries = ixData2.mediaQueryKeys } = event;
+    if (!shouldAllowMediaQuery2(mediaQueries, ixSession2.mediaQueryKey)) {
+      return;
+    }
+    if (continuous || active || complete) {
+      if (current || renderType === RENDER_GENERAL4 && complete) {
+        store.dispatch(
+          elementStateChanged(elementId, actionTypeId, current, actionItem)
+        );
+        const { ixElements: ixElements3 } = store.getState();
+        const { ref, refType, refState: refState2 } = ixElements3[elementId] || {};
+        const actionState = refState2 && refState2[actionTypeId];
+        if (refType === HTML_ELEMENT4 || isPluginType2(actionTypeId)) {
+          renderHTMLElement2(
+            ref,
+            refState2,
+            actionState,
+            eventId,
+            actionItem,
+            styleProp,
+            IX2BrowserApi_exports,
+            renderType,
+            pluginInstance
+          );
+        }
+      }
+      if (complete) {
+        if (isCarrier) {
+          const started = startActionGroup({
+            store,
+            eventId,
+            eventTarget,
+            eventStateKey,
+            actionListId,
+            groupIndex: groupIndex + 1,
+            verbose
+          });
+          if (verbose && !started) {
+            store.dispatch(
+              actionListPlaybackChanged({ actionListId, isPlaying: false })
+            );
+          }
+        }
+        removeInstance(instance, store);
+      }
+    }
+  }
+  var import_find2, import_get2, import_size, import_omitBy, import_isEmpty, import_mapValues, import_forEach, import_throttle, import_shared6, QuickEffectsIdList, isQuickEffect, COLON_DELIMITER4, BOUNDARY_SELECTOR2, HTML_ELEMENT4, RENDER_GENERAL4, W_MOD_IX2, getAffectedElements2, getElementId2, getDestinationValues2, observeStore2, getInstanceId2, renderHTMLElement2, clearAllStyles2, getMaxDurationItemIndex2, getComputedStyle3, getInstanceOrigin2, reduceListToGroup2, shouldNamespaceEventParameter2, getNamespacedParameterId3, shouldAllowMediaQuery2, cleanupHTMLElement2, clearObjectCache2, stringifyTarget2, mediaQueriesEqual2, shallowEqual2, isPluginType2, createPluginInstance2, getPluginDuration2, ua, IS_MOBILE_SAFARI, THROTTLED_EVENT_WAIT, WINDOW_RESIZE_EVENTS, mapFoundValues, forEachEventTarget, getAffectedForEvent;
+  var init_IX2VanillaEngine = __esm({
+    "packages/systems/ix2/engine/logic/IX2VanillaEngine.ts"() {
+      "use strict";
+      import_find2 = __toESM(require_find());
+      import_get2 = __toESM(require_get());
+      import_size = __toESM(require_size());
+      import_omitBy = __toESM(require_omitBy());
+      import_isEmpty = __toESM(require_isEmpty());
+      import_mapValues = __toESM(require_mapValues());
+      import_forEach = __toESM(require_forEach());
+      import_throttle = __toESM(require_throttle());
+      init_shared_constants();
+      import_shared6 = __toESM(require_shared2());
+      init_IX2EngineActions();
+      init_IX2BrowserApi();
+      init_IX2VanillaEvents();
+      QuickEffectsIdList = Object.keys(QuickEffectIds);
+      isQuickEffect = (actionTypeId) => QuickEffectsIdList.includes(actionTypeId);
+      ({
+        COLON_DELIMITER: COLON_DELIMITER4,
+        BOUNDARY_SELECTOR: BOUNDARY_SELECTOR2,
+        HTML_ELEMENT: HTML_ELEMENT4,
+        RENDER_GENERAL: RENDER_GENERAL4,
+        W_MOD_IX: W_MOD_IX2
+      } = IX2EngineConstants_exports);
+      ({
+        getAffectedElements: getAffectedElements2,
+        getElementId: getElementId2,
+        getDestinationValues: getDestinationValues2,
+        observeStore: observeStore2,
+        getInstanceId: getInstanceId2,
+        renderHTMLElement: renderHTMLElement2,
+        clearAllStyles: clearAllStyles2,
+        getMaxDurationItemIndex: getMaxDurationItemIndex2,
+        getComputedStyle: getComputedStyle3,
+        getInstanceOrigin: getInstanceOrigin2,
+        reduceListToGroup: reduceListToGroup2,
+        shouldNamespaceEventParameter: shouldNamespaceEventParameter2,
+        getNamespacedParameterId: getNamespacedParameterId3,
+        shouldAllowMediaQuery: shouldAllowMediaQuery2,
+        cleanupHTMLElement: cleanupHTMLElement2,
+        clearObjectCache: clearObjectCache2,
+        stringifyTarget: stringifyTarget2,
+        mediaQueriesEqual: mediaQueriesEqual2,
+        shallowEqual: shallowEqual2
+      } = import_shared6.IX2VanillaUtils);
+      ({ isPluginType: isPluginType2, createPluginInstance: createPluginInstance2, getPluginDuration: getPluginDuration2 } = import_shared6.IX2VanillaPlugins);
+      ua = navigator.userAgent;
+      IS_MOBILE_SAFARI = ua.match(/iPad/i) || ua.match(/iPhone/);
+      THROTTLED_EVENT_WAIT = 12;
+      WINDOW_RESIZE_EVENTS = ["resize", "orientationchange"];
+      mapFoundValues = (object, iteratee) => (0, import_omitBy.default)((0, import_mapValues.default)(object, iteratee), import_isEmpty.default);
+      forEachEventTarget = (eventTargets, eventCallback) => {
+        (0, import_forEach.default)(eventTargets, (elements, eventId) => {
+          elements.forEach((element, index) => {
+            const eventStateKey = eventId + COLON_DELIMITER4 + index;
+            eventCallback(element, eventId, eventStateKey);
+          });
+        });
+      };
+      getAffectedForEvent = (event) => {
+        const config = { target: event.target, targets: event.targets };
+        return getAffectedElements2({ config, elementApi: IX2BrowserApi_exports });
+      };
+    }
+  });
+
+  // packages/systems/ix2/engine/index.js
+  var require_engine = __commonJS({
+    "packages/systems/ix2/engine/index.js"(exports) {
+      "use strict";
+      var _interopRequireWildcard = require_interopRequireWildcard().default;
+      var _interopRequireDefault = require_interopRequireDefault().default;
+      Object.defineProperty(exports, "__esModule", {
+        value: true
+      });
+      exports.actions = void 0;
+      exports.destroy = destroy2;
+      exports.init = init2;
+      exports.setEnv = setEnv;
+      exports.store = void 0;
+      require_includes3();
+      var _redux = require_lib2();
+      var _IX2Reducer = _interopRequireDefault((init_IX2Reducer(), __toCommonJS(IX2Reducer_exports)));
+      var _IX2VanillaEngine = (init_IX2VanillaEngine(), __toCommonJS(IX2VanillaEngine_exports));
+      var actions = _interopRequireWildcard((init_IX2EngineActions(), __toCommonJS(IX2EngineActions_exports)));
+      exports.actions = actions;
+      var store = exports.store = (0, _redux.createStore)(_IX2Reducer.default);
+      function setEnv(env) {
+        if (env()) {
+          (0, _IX2VanillaEngine.observeRequests)(store);
+        }
+      }
+      function init2(rawData) {
+        destroy2();
+        (0, _IX2VanillaEngine.startEngine)({
+          store,
+          rawData,
+          allowEvents: true
+        });
+      }
+      function destroy2() {
+        (0, _IX2VanillaEngine.stopEngine)(store);
+      }
+    }
+  });
+
+  // packages/shared/render/plugins/BaseSiteModules/webflow-ix2.js
+  var require_webflow_ix2 = __commonJS({
+    "packages/shared/render/plugins/BaseSiteModules/webflow-ix2.js"(exports, module2) {
+      "use strict";
+      var Webflow = require_webflow_lib();
+      var ix2 = require_engine();
+      ix2.setEnv(Webflow.env);
+      Webflow.define("ix2", module2.exports = function() {
+        return ix2;
+      });
+    }
+  });
+
+  // packages/shared/render/plugins/BaseSiteModules/webflow-links.js
+  var require_webflow_links = __commonJS({
+    "packages/shared/render/plugins/BaseSiteModules/webflow-links.js"(exports, module2) {
+      "use strict";
+      var Webflow = require_webflow_lib();
+      Webflow.define("links", module2.exports = function($2, _) {
+        var api = {};
+        var $win = $2(window);
+        var designer;
+        var inApp = Webflow.env();
+        var location = window.location;
+        var tempLink = document.createElement("a");
+        var linkCurrent = "w--current";
+        var indexPage = /index\.(html|php)$/;
+        var dirList = /\/$/;
+        var anchors;
+        var slug;
+        api.ready = api.design = api.preview = init2;
+        function init2() {
+          designer = inApp && Webflow.env("design");
+          slug = Webflow.env("slug") || location.pathname || "";
+          Webflow.scroll.off(scroll);
+          anchors = [];
+          var links = document.links;
+          for (var i = 0; i < links.length; ++i) {
+            select(links[i]);
+          }
+          if (anchors.length) {
+            Webflow.scroll.on(scroll);
+            scroll();
+          }
+        }
+        function select(link) {
+          if (link.getAttribute("hreflang")) {
+            return;
+          }
+          var href = designer && link.getAttribute("href-disabled") || link.getAttribute("href");
+          tempLink.href = href;
+          if (href.indexOf(":") >= 0) {
+            return;
+          }
+          var $link = $2(link);
+          if (tempLink.hash.length > 1 && tempLink.host + tempLink.pathname === location.host + location.pathname) {
+            if (!/^#[a-zA-Z0-9\-\_]+$/.test(tempLink.hash)) {
+              return;
+            }
+            var $section = $2(tempLink.hash);
+            $section.length && anchors.push({
+              link: $link,
+              sec: $section,
+              active: false
+            });
+            return;
+          }
+          if (href === "#" || href === "") {
+            return;
+          }
+          var match = tempLink.href === location.href || href === slug || indexPage.test(href) && dirList.test(slug);
+          setClass($link, linkCurrent, match);
+        }
+        function scroll() {
+          var viewTop = $win.scrollTop();
+          var viewHeight = $win.height();
+          _.each(anchors, function(anchor) {
+            if (anchor.link.attr("hreflang")) {
+              return;
+            }
+            var $link = anchor.link;
+            var $section = anchor.sec;
+            var top = $section.offset().top;
+            var height = $section.outerHeight();
+            var offset = viewHeight * 0.5;
+            var active = $section.is(":visible") && top + height - offset >= viewTop && top + offset <= viewTop + viewHeight;
+            if (anchor.active === active) {
+              return;
+            }
+            anchor.active = active;
+            setClass($link, linkCurrent, active);
+          });
+        }
+        function setClass($elem, className, add) {
+          var exists = $elem.hasClass(className);
+          if (add && exists) {
+            return;
+          }
+          if (!add && !exists) {
+            return;
+          }
+          add ? $elem.addClass(className) : $elem.removeClass(className);
+        }
+        return api;
+      });
+    }
+  });
+
+  // packages/shared/render/plugins/BaseSiteModules/webflow-scroll.js
+  var require_webflow_scroll = __commonJS({
+    "packages/shared/render/plugins/BaseSiteModules/webflow-scroll.js"(exports, module2) {
+      "use strict";
+      var Webflow = require_webflow_lib();
+      Webflow.define("scroll", module2.exports = function($2) {
+        var NS_EVENTS = {
+          WF_CLICK_EMPTY: "click.wf-empty-link",
+          WF_CLICK_SCROLL: "click.wf-scroll"
+        };
+        var loc = window.location;
+        var history = inIframe() ? null : window.history;
+        var $win = $2(window);
+        var $doc = $2(document);
+        var $body = $2(document.body);
+        var animate = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || function(fn) {
+          window.setTimeout(fn, 15);
+        };
+        var rootTag = Webflow.env("editor") ? ".w-editor-body" : "body";
+        var headerSelector = "header, " + rootTag + " > .header, " + rootTag + " > .w-nav:not([data-no-scroll])";
+        var emptyHrefSelector = 'a[href="#"]';
+        var localHrefSelector = 'a[href*="#"]:not(.w-tab-link):not(' + emptyHrefSelector + ")";
+        var scrollTargetOutlineCSS = '.wf-force-outline-none[tabindex="-1"]:focus{outline:none;}';
+        var focusStylesEl = document.createElement("style");
+        focusStylesEl.appendChild(document.createTextNode(scrollTargetOutlineCSS));
+        function inIframe() {
+          try {
+            return Boolean(window.frameElement);
+          } catch (e) {
+            return true;
+          }
+        }
+        var validHash = /^#[a-zA-Z0-9][\w:.-]*$/;
+        function linksToCurrentPage(link) {
+          return validHash.test(link.hash) && link.host + link.pathname === loc.host + loc.pathname;
+        }
+        const reducedMotionMediaQuery = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)");
+        function reducedMotionEnabled() {
+          return document.body.getAttribute("data-wf-scroll-motion") === "none" || reducedMotionMediaQuery.matches;
+        }
+        function setFocusable($el, action) {
+          var initialTabindex;
+          switch (action) {
+            case "add":
+              initialTabindex = $el.attr("tabindex");
+              if (initialTabindex) {
+                $el.attr("data-wf-tabindex-swap", initialTabindex);
+              } else {
+                $el.attr("tabindex", "-1");
+              }
+              break;
+            case "remove":
+              initialTabindex = $el.attr("data-wf-tabindex-swap");
+              if (initialTabindex) {
+                $el.attr("tabindex", initialTabindex);
+                $el.removeAttr("data-wf-tabindex-swap");
+              } else {
+                $el.removeAttr("tabindex");
+              }
+              break;
+          }
+          $el.toggleClass("wf-force-outline-none", action === "add");
+        }
+        function validateScroll(evt) {
+          var target = evt.currentTarget;
+          if (
+            // Bail if in Designer
+            Webflow.env("design") || // Ignore links being used by jQuery mobile
+            window.$.mobile && /(?:^|\s)ui-link(?:$|\s)/.test(target.className)
+          ) {
+            return;
+          }
+          var hash = linksToCurrentPage(target) ? target.hash : "";
+          if (hash === "")
+            return;
+          var $el = $2(hash);
+          if (!$el.length) {
+            return;
+          }
+          if (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+          }
+          updateHistory(hash, evt);
+          window.setTimeout(function() {
+            scroll($el, function setFocus() {
+              setFocusable($el, "add");
+              $el.get(0).focus({
+                preventScroll: true
+              });
+              setFocusable($el, "remove");
+            });
+          }, evt ? 0 : 300);
+        }
+        function updateHistory(hash) {
+          if (loc.hash !== hash && history && history.pushState && // Navigation breaks Chrome when the protocol is `file:`.
+          !(Webflow.env.chrome && loc.protocol === "file:")) {
+            var oldHash = history.state && history.state.hash;
+            if (oldHash !== hash) {
+              history.pushState({
+                hash
+              }, "", hash);
+            }
+          }
+        }
+        function scroll($targetEl, cb) {
+          var start = $win.scrollTop();
+          var end = calculateScrollEndPosition($targetEl);
+          if (start === end)
+            return;
+          var duration = calculateScrollDuration($targetEl, start, end);
+          var clock = Date.now();
+          var step = function() {
+            var elapsed = Date.now() - clock;
+            window.scroll(0, getY(start, end, elapsed, duration));
+            if (elapsed <= duration) {
+              animate(step);
+            } else if (typeof cb === "function") {
+              cb();
+            }
+          };
+          animate(step);
+        }
+        function calculateScrollEndPosition($targetEl) {
+          var $header = $2(headerSelector);
+          var offsetY = $header.css("position") === "fixed" ? $header.outerHeight() : 0;
+          var end = $targetEl.offset().top - offsetY;
+          if ($targetEl.data("scroll") === "mid") {
+            var available = $win.height() - offsetY;
+            var elHeight = $targetEl.outerHeight();
+            if (elHeight < available) {
+              end -= Math.round((available - elHeight) / 2);
+            }
+          }
+          return end;
+        }
+        function calculateScrollDuration($targetEl, start, end) {
+          if (reducedMotionEnabled())
+            return 0;
+          var mult = 1;
+          $body.add($targetEl).each(function(_, el) {
+            var time = parseFloat(el.getAttribute("data-scroll-time"));
+            if (!isNaN(time) && time >= 0) {
+              mult = time;
+            }
+          });
+          return (472.143 * Math.log(Math.abs(start - end) + 125) - 2e3) * mult;
+        }
+        function getY(start, end, elapsed, duration) {
+          if (elapsed > duration) {
+            return end;
+          }
+          return start + (end - start) * ease2(elapsed / duration);
+        }
+        function ease2(t) {
+          return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+        }
+        function ready() {
+          var {
+            WF_CLICK_EMPTY,
+            WF_CLICK_SCROLL
+          } = NS_EVENTS;
+          $doc.on(WF_CLICK_SCROLL, localHrefSelector, validateScroll);
+          $doc.on(WF_CLICK_EMPTY, emptyHrefSelector, function(e) {
+            e.preventDefault();
+          });
+          document.head.insertBefore(focusStylesEl, document.head.firstChild);
+        }
+        return {
+          ready
+        };
+      });
+    }
+  });
+
+  // packages/shared/render/plugins/BaseSiteModules/webflow-touch.js
+  var require_webflow_touch = __commonJS({
+    "packages/shared/render/plugins/BaseSiteModules/webflow-touch.js"(exports, module2) {
+      "use strict";
+      var Webflow = require_webflow_lib();
+      Webflow.define("touch", module2.exports = function($2) {
+        var api = {};
+        var getSelection = window.getSelection;
+        $2.event.special.tap = {
+          bindType: "click",
+          delegateType: "click"
+        };
+        api.init = function(el) {
+          el = typeof el === "string" ? $2(el).get(0) : el;
+          return el ? new Touch(el) : null;
+        };
+        function Touch(el) {
+          var active = false;
+          var useTouch = false;
+          var thresholdX = Math.min(Math.round(window.innerWidth * 0.04), 40);
+          var startX;
+          var lastX;
+          el.addEventListener("touchstart", start, false);
+          el.addEventListener("touchmove", move, false);
+          el.addEventListener("touchend", end, false);
+          el.addEventListener("touchcancel", cancel, false);
+          el.addEventListener("mousedown", start, false);
+          el.addEventListener("mousemove", move, false);
+          el.addEventListener("mouseup", end, false);
+          el.addEventListener("mouseout", cancel, false);
+          function start(evt) {
+            var touches = evt.touches;
+            if (touches && touches.length > 1) {
+              return;
+            }
+            active = true;
+            if (touches) {
+              useTouch = true;
+              startX = touches[0].clientX;
+            } else {
+              startX = evt.clientX;
+            }
+            lastX = startX;
+          }
+          function move(evt) {
+            if (!active) {
+              return;
+            }
+            if (useTouch && evt.type === "mousemove") {
+              evt.preventDefault();
+              evt.stopPropagation();
+              return;
+            }
+            var touches = evt.touches;
+            var x = touches ? touches[0].clientX : evt.clientX;
+            var velocityX = x - lastX;
+            lastX = x;
+            if (Math.abs(velocityX) > thresholdX && getSelection && String(getSelection()) === "") {
+              triggerEvent("swipe", evt, {
+                direction: velocityX > 0 ? "right" : "left"
+              });
+              cancel();
+            }
+          }
+          function end(evt) {
+            if (!active) {
+              return;
+            }
+            active = false;
+            if (useTouch && evt.type === "mouseup") {
+              evt.preventDefault();
+              evt.stopPropagation();
+              useTouch = false;
+              return;
+            }
+          }
+          function cancel() {
+            active = false;
+          }
+          function destroy2() {
+            el.removeEventListener("touchstart", start, false);
+            el.removeEventListener("touchmove", move, false);
+            el.removeEventListener("touchend", end, false);
+            el.removeEventListener("touchcancel", cancel, false);
+            el.removeEventListener("mousedown", start, false);
+            el.removeEventListener("mousemove", move, false);
+            el.removeEventListener("mouseup", end, false);
+            el.removeEventListener("mouseout", cancel, false);
+            el = null;
+          }
+          this.destroy = destroy2;
+        }
+        function triggerEvent(type, evt, data) {
+          var newEvent = $2.Event(type, {
+            originalEvent: evt
+          });
+          $2(evt.target).trigger(newEvent, data);
+        }
+        api.instance = api.init(document);
+        return api;
+      });
+    }
+  });
+
+  // node_modules/custom-event-polyfill/polyfill.js
+  var init_polyfill = __esm({
+    "node_modules/custom-event-polyfill/polyfill.js"() {
+      (function() {
+        if (typeof window === "undefined") {
+          return;
+        }
+        try {
+          var ce = new window.CustomEvent("test", { cancelable: true });
+          ce.preventDefault();
+          if (ce.defaultPrevented !== true) {
+            throw new Error("Could not prevent default");
+          }
+        } catch (e) {
+          var CustomEvent2 = function(event, params) {
+            var evt, origPrevent;
+            params = params || {};
+            params.bubbles = !!params.bubbles;
+            params.cancelable = !!params.cancelable;
+            evt = document.createEvent("CustomEvent");
+            evt.initCustomEvent(
+              event,
+              params.bubbles,
+              params.cancelable,
+              params.detail
+            );
+            origPrevent = evt.preventDefault;
+            evt.preventDefault = function() {
+              origPrevent.call(this);
+              try {
+                Object.defineProperty(this, "defaultPrevented", {
+                  get: function() {
+                    return true;
+                  }
+                });
+              } catch (e2) {
+                this.defaultPrevented = true;
+              }
+            };
+            return evt;
+          };
+          CustomEvent2.prototype = window.Event.prototype;
+          window.CustomEvent = CustomEvent2;
+        }
+      })();
+    }
+  });
+
   // node_modules/core-js/internals/is-array.js
   var require_is_array = __commonJS({
     "node_modules/core-js/internals/is-array.js"(exports, module2) {
@@ -3235,114 +12775,6 @@
         if (classof(argument) === "Symbol")
           throw TypeError("Cannot convert a Symbol value to a string");
         return String2(argument);
-      };
-    }
-  });
-
-  // node_modules/core-js/internals/object-keys.js
-  var require_object_keys = __commonJS({
-    "node_modules/core-js/internals/object-keys.js"(exports, module2) {
-      var internalObjectKeys = require_object_keys_internal();
-      var enumBugKeys = require_enum_bug_keys();
-      module2.exports = Object.keys || function keys(O) {
-        return internalObjectKeys(O, enumBugKeys);
-      };
-    }
-  });
-
-  // node_modules/core-js/internals/object-define-properties.js
-  var require_object_define_properties = __commonJS({
-    "node_modules/core-js/internals/object-define-properties.js"(exports, module2) {
-      var DESCRIPTORS = require_descriptors();
-      var definePropertyModule = require_object_define_property();
-      var anObject = require_an_object();
-      var toIndexedObject = require_to_indexed_object();
-      var objectKeys = require_object_keys();
-      module2.exports = DESCRIPTORS ? Object.defineProperties : function defineProperties(O, Properties) {
-        anObject(O);
-        var props = toIndexedObject(Properties);
-        var keys = objectKeys(Properties);
-        var length = keys.length;
-        var index = 0;
-        var key;
-        while (length > index)
-          definePropertyModule.f(O, key = keys[index++], props[key]);
-        return O;
-      };
-    }
-  });
-
-  // node_modules/core-js/internals/html.js
-  var require_html = __commonJS({
-    "node_modules/core-js/internals/html.js"(exports, module2) {
-      var getBuiltIn = require_get_built_in();
-      module2.exports = getBuiltIn("document", "documentElement");
-    }
-  });
-
-  // node_modules/core-js/internals/object-create.js
-  var require_object_create = __commonJS({
-    "node_modules/core-js/internals/object-create.js"(exports, module2) {
-      var anObject = require_an_object();
-      var defineProperties = require_object_define_properties();
-      var enumBugKeys = require_enum_bug_keys();
-      var hiddenKeys = require_hidden_keys();
-      var html = require_html();
-      var documentCreateElement = require_document_create_element();
-      var sharedKey = require_shared_key();
-      var GT = ">";
-      var LT = "<";
-      var PROTOTYPE = "prototype";
-      var SCRIPT = "script";
-      var IE_PROTO = sharedKey("IE_PROTO");
-      var EmptyConstructor = function() {
-      };
-      var scriptTag = function(content) {
-        return LT + SCRIPT + GT + content + LT + "/" + SCRIPT + GT;
-      };
-      var NullProtoObjectViaActiveX = function(activeXDocument2) {
-        activeXDocument2.write(scriptTag(""));
-        activeXDocument2.close();
-        var temp = activeXDocument2.parentWindow.Object;
-        activeXDocument2 = null;
-        return temp;
-      };
-      var NullProtoObjectViaIFrame = function() {
-        var iframe = documentCreateElement("iframe");
-        var JS = "java" + SCRIPT + ":";
-        var iframeDocument;
-        iframe.style.display = "none";
-        html.appendChild(iframe);
-        iframe.src = String(JS);
-        iframeDocument = iframe.contentWindow.document;
-        iframeDocument.open();
-        iframeDocument.write(scriptTag("document.F=Object"));
-        iframeDocument.close();
-        return iframeDocument.F;
-      };
-      var activeXDocument;
-      var NullProtoObject = function() {
-        try {
-          activeXDocument = new ActiveXObject("htmlfile");
-        } catch (error) {
-        }
-        NullProtoObject = typeof document != "undefined" ? document.domain && activeXDocument ? NullProtoObjectViaActiveX(activeXDocument) : NullProtoObjectViaIFrame() : NullProtoObjectViaActiveX(activeXDocument);
-        var length = enumBugKeys.length;
-        while (length--)
-          delete NullProtoObject[PROTOTYPE][enumBugKeys[length]];
-        return NullProtoObject();
-      };
-      hiddenKeys[IE_PROTO] = true;
-      module2.exports = Object.create || function create5(O, Properties) {
-        var result2;
-        if (O !== null) {
-          EmptyConstructor[PROTOTYPE] = anObject(O);
-          result2 = new EmptyConstructor();
-          EmptyConstructor[PROTOTYPE] = null;
-          result2[IE_PROTO] = O;
-        } else
-          result2 = NullProtoObject();
-        return Properties === void 0 ? result2 : defineProperties(result2, Properties);
       };
     }
   });
@@ -4101,26 +13533,6 @@
       var classList = documentCreateElement("span").classList;
       var DOMTokenListPrototype = classList && classList.constructor && classList.constructor.prototype;
       module2.exports = DOMTokenListPrototype === Object.prototype ? void 0 : DOMTokenListPrototype;
-    }
-  });
-
-  // node_modules/core-js/internals/add-to-unscopables.js
-  var require_add_to_unscopables = __commonJS({
-    "node_modules/core-js/internals/add-to-unscopables.js"(exports, module2) {
-      var wellKnownSymbol = require_well_known_symbol();
-      var create5 = require_object_create();
-      var definePropertyModule = require_object_define_property();
-      var UNSCOPABLES = wellKnownSymbol("unscopables");
-      var ArrayPrototype = Array.prototype;
-      if (ArrayPrototype[UNSCOPABLES] == void 0) {
-        definePropertyModule.f(ArrayPrototype, UNSCOPABLES, {
-          configurable: true,
-          value: create5(null)
-        });
-      }
-      module2.exports = function(key) {
-        ArrayPrototype[UNSCOPABLES][key] = true;
-      };
     }
   });
 
@@ -4966,7 +14378,7 @@
           SKIPS_HOLES = false;
         });
       $2({ target: "Array", proto: true, forced: SKIPS_HOLES }, {
-        find: function find2(callbackfn) {
+        find: function find4(callbackfn) {
           return $find(this, callbackfn, arguments.length > 1 ? arguments[1] : void 0);
         }
       });
@@ -5085,7 +14497,7 @@
       var $forEach = require_array_iteration().forEach;
       var arrayMethodIsStrict = require_array_method_is_strict();
       var STRICT_METHOD = arrayMethodIsStrict("forEach");
-      module2.exports = !STRICT_METHOD ? function forEach5(callbackfn) {
+      module2.exports = !STRICT_METHOD ? function forEach6(callbackfn) {
         return $forEach(this, callbackfn, arguments.length > 1 ? arguments[1] : void 0);
       } : [].forEach;
     }
@@ -5096,26 +14508,10 @@
     "node_modules/core-js/modules/es.array.for-each.js"() {
       "use strict";
       var $2 = require_export();
-      var forEach5 = require_array_for_each();
-      $2({ target: "Array", proto: true, forced: [].forEach != forEach5 }, {
-        forEach: forEach5
+      var forEach6 = require_array_for_each();
+      $2({ target: "Array", proto: true, forced: [].forEach != forEach6 }, {
+        forEach: forEach6
       });
-    }
-  });
-
-  // node_modules/core-js/modules/es.array.includes.js
-  var require_es_array_includes = __commonJS({
-    "node_modules/core-js/modules/es.array.includes.js"() {
-      "use strict";
-      var $2 = require_export();
-      var $includes = require_array_includes().includes;
-      var addToUnscopables = require_add_to_unscopables();
-      $2({ target: "Array", proto: true }, {
-        includes: function includes(el) {
-          return $includes(this, el, arguments.length > 1 ? arguments[1] : void 0);
-        }
-      });
-      addToUnscopables("includes");
     }
   });
 
@@ -5286,7 +14682,7 @@
       var STRICT_METHOD = arrayMethodIsStrict("reduce");
       var CHROME_BUG = !IS_NODE && CHROME_VERSION > 79 && CHROME_VERSION < 83;
       $2({ target: "Array", proto: true, forced: !STRICT_METHOD || CHROME_BUG }, {
-        reduce: function reduce2(callbackfn) {
+        reduce: function reduce3(callbackfn) {
           var length = arguments.length;
           return $reduce(this, callbackfn, length, length > 1 ? arguments[1] : void 0);
         }
@@ -5407,7 +14803,7 @@
       var mergeSort = function(array, comparefn) {
         var length = array.length;
         var middle = floor(length / 2);
-        return length < 8 ? insertionSort(array, comparefn) : merge2(
+        return length < 8 ? insertionSort(array, comparefn) : merge4(
           array,
           mergeSort(arraySlice(array, 0, middle), comparefn),
           mergeSort(arraySlice(array, middle), comparefn),
@@ -5429,7 +14825,7 @@
         }
         return array;
       };
-      var merge2 = function(array, left, right, comparefn) {
+      var merge4 = function(array, left, right, comparefn) {
         var llength = left.length;
         var rlength = right.length;
         var lindex = 0;
@@ -5714,12 +15110,12 @@
         return function($this, pos) {
           var S = toString3(requireObjectCoercible($this));
           var position = toIntegerOrInfinity(pos);
-          var size = S.length;
+          var size2 = S.length;
           var first, second;
-          if (position < 0 || position >= size)
+          if (position < 0 || position >= size2)
             return CONVERT_TO_STRING ? "" : void 0;
           first = charCodeAt(S, position);
-          return first < 55296 || first > 56319 || position + 1 === size || (second = charCodeAt(S, position + 1)) < 56320 || second > 57343 ? CONVERT_TO_STRING ? charAt(S, position) : first : CONVERT_TO_STRING ? stringSlice(S, position, position + 2) : (first - 55296 << 10) + (second - 56320) + 65536;
+          return first < 55296 || first > 56319 || position + 1 === size2 || (second = charCodeAt(S, position + 1)) < 56320 || second > 57343 ? CONVERT_TO_STRING ? charAt(S, position) : first : CONVERT_TO_STRING ? stringSlice(S, position, position + 2) : (first - 55296 << 10) + (second - 56320) + 65536;
         };
       };
       module2.exports = {
@@ -6049,11 +15445,11 @@
               return this;
             } : KEY == "delete" ? function(key) {
               return IS_WEAK && !isObject2(key) ? false : uncurriedNativeMethod(this, key === 0 ? 0 : key);
-            } : KEY == "get" ? function get6(key) {
+            } : KEY == "get" ? function get8(key) {
               return IS_WEAK && !isObject2(key) ? void 0 : uncurriedNativeMethod(this, key === 0 ? 0 : key);
             } : KEY == "has" ? function has(key) {
               return IS_WEAK && !isObject2(key) ? false : uncurriedNativeMethod(this, key === 0 ? 0 : key);
-            } : function set(key, value) {
+            } : function set3(key, value) {
               uncurriedNativeMethod(this, key === 0 ? 0 : key, value);
               return this;
             }
@@ -6253,7 +15649,7 @@
             // `{ Map, Set }.prototype.forEach(callbackfn, thisArg = undefined)` methods
             // https://tc39.es/ecma262/#sec-map.prototype.foreach
             // https://tc39.es/ecma262/#sec-set.prototype.foreach
-            forEach: function forEach5(callbackfn) {
+            forEach: function forEach6(callbackfn) {
               var state = getInternalState(this);
               var boundFunction = bind3(callbackfn, arguments.length > 1 ? arguments[1] : void 0);
               var entry;
@@ -6273,13 +15669,13 @@
           redefineAll(Prototype, IS_MAP ? {
             // `Map.prototype.get(key)` method
             // https://tc39.es/ecma262/#sec-map.prototype.get
-            get: function get6(key) {
+            get: function get8(key) {
               var entry = getEntry(this, key);
               return entry && entry.value;
             },
             // `Map.prototype.set(key, value)` method
             // https://tc39.es/ecma262/#sec-map.prototype.set
-            set: function set(key, value) {
+            set: function set3(key, value) {
               return define2(this, key === 0 ? 0 : key, value);
             }
           } : {
@@ -6405,7 +15801,7 @@
       var createElement = require_document_create_element();
       var IS_IOS = require_engine_is_ios();
       var IS_NODE = require_engine_is_node();
-      var set = global2.setImmediate;
+      var set3 = global2.setImmediate;
       var clear = global2.clearImmediate;
       var process2 = global2.process;
       var Dispatch = global2.Dispatch;
@@ -6441,8 +15837,8 @@
       var post = function(id) {
         global2.postMessage(String2(id), location.protocol + "//" + location.host);
       };
-      if (!set || !clear) {
-        set = function setImmediate2(fn) {
+      if (!set3 || !clear) {
+        set3 = function setImmediate2(fn) {
           var args = arraySlice(arguments, 1);
           queue[++counter] = function() {
             apply(isCallable(fn) ? fn : Function2(fn), void 0, args);
@@ -6483,7 +15879,7 @@
         }
       }
       module2.exports = {
-        set,
+        set: set3,
         clear
       };
     }
@@ -7423,7 +16819,7 @@
       var $findLast = require_array_iteration_from_last().findLast;
       var addToUnscopables = require_add_to_unscopables();
       $2({ target: "Array", proto: true }, {
-        findLast: function findLast(callbackfn) {
+        findLast: function findLast2(callbackfn) {
           return $findLast(this, callbackfn, arguments.length > 1 ? arguments[1] : void 0);
         }
       });
@@ -7713,17 +17109,6 @@
     }
   });
 
-  // node_modules/core-js/internals/entry-unbind.js
-  var require_entry_unbind = __commonJS({
-    "node_modules/core-js/internals/entry-unbind.js"(exports, module2) {
-      var global2 = require_global();
-      var uncurryThis = require_function_uncurry_this();
-      module2.exports = function(CONSTRUCTOR, METHOD) {
-        return uncurryThis(global2[CONSTRUCTOR].prototype[METHOD]);
-      };
-    }
-  });
-
   // node_modules/core-js/es/string/repeat.js
   var require_repeat = __commonJS({
     "node_modules/core-js/es/string/repeat.js"(exports, module2) {
@@ -7831,14 +17216,14 @@
       var global2 = require_global();
       var DOMIterables = require_dom_iterables();
       var DOMTokenListPrototype = require_dom_token_list_prototype();
-      var forEach5 = require_array_for_each();
+      var forEach6 = require_array_for_each();
       var createNonEnumerableProperty = require_create_non_enumerable_property();
       var handlePrototype = function(CollectionPrototype) {
-        if (CollectionPrototype && CollectionPrototype.forEach !== forEach5)
+        if (CollectionPrototype && CollectionPrototype.forEach !== forEach6)
           try {
-            createNonEnumerableProperty(CollectionPrototype, "forEach", forEach5);
+            createNonEnumerableProperty(CollectionPrototype, "forEach", forEach6);
           } catch (error) {
-            CollectionPrototype.forEach = forEach5;
+            CollectionPrototype.forEach = forEach6;
           }
       };
       for (COLLECTION_NAME in DOMIterables) {
@@ -7937,7 +17322,7 @@
       var getOwnPropertyDescriptor = require_object_get_own_property_descriptor().f;
       var defineProperty = require_object_define_property().f;
       var thisNumberValue = require_this_number_value();
-      var trim = require_string_trim().trim;
+      var trim2 = require_string_trim().trim;
       var NUMBER = "Number";
       var NativeNumber = global2[NUMBER];
       var NumberPrototype = NativeNumber.prototype;
@@ -7954,7 +17339,7 @@
         if (isSymbol(it))
           throw TypeError2("Cannot convert a Symbol value to a number");
         if (typeof it == "string" && it.length > 2) {
-          it = trim(it);
+          it = trim2(it);
           first = charCodeAt(it, 0);
           if (first === 43 || first === 45) {
             third = charCodeAt(it, 2);
@@ -8119,7 +17504,7 @@
       var fails = require_fails();
       var uncurryThis = require_function_uncurry_this();
       var toString3 = require_to_string();
-      var trim = require_string_trim().trim;
+      var trim2 = require_string_trim().trim;
       var whitespaces = require_whitespaces();
       var charAt = uncurryThis("".charAt);
       var n$ParseFloat = global2.parseFloat;
@@ -8129,7 +17514,7 @@
         n$ParseFloat(Object(ITERATOR));
       });
       module2.exports = FORCED ? function parseFloat2(string) {
-        var trimmedString = trim(toString3(string));
+        var trimmedString = trim2(toString3(string));
         var result2 = n$ParseFloat(trimmedString);
         return result2 === 0 && charAt(trimmedString, 0) == "-" ? -0 : result2;
       } : n$ParseFloat;
@@ -8154,7 +17539,7 @@
       var fails = require_fails();
       var uncurryThis = require_function_uncurry_this();
       var toString3 = require_to_string();
-      var trim = require_string_trim().trim;
+      var trim2 = require_string_trim().trim;
       var whitespaces = require_whitespaces();
       var $parseInt = global2.parseInt;
       var Symbol2 = global2.Symbol;
@@ -8165,7 +17550,7 @@
         $parseInt(Object(ITERATOR));
       });
       module2.exports = FORCED ? function parseInt2(string, radix) {
-        var S = trim(toString3(string));
+        var S = trim2(toString3(string));
         return $parseInt(S, radix >>> 0 || (exec(hex, S) ? 16 : 10));
       } : $parseInt;
     }
@@ -9812,16 +19197,16 @@
   function readEscapedUnicodeVariableWidth(lexer, position) {
     const body = lexer.source.body;
     let point = 0;
-    let size = 3;
-    while (size < 12) {
-      const code = body.charCodeAt(position + size++);
+    let size2 = 3;
+    while (size2 < 12) {
+      const code = body.charCodeAt(position + size2++);
       if (code === 125) {
-        if (size < 5 || !isUnicodeScalarValue(point)) {
+        if (size2 < 5 || !isUnicodeScalarValue(point)) {
           break;
         }
         return {
           value: String.fromCodePoint(point),
-          size
+          size: size2
         };
       }
       point = point << 4 | readHexDigit(code);
@@ -9834,7 +19219,7 @@
       position,
       `Invalid Unicode escape sequence: "${body.slice(
         position,
-        position + size
+        position + size2
       )}".`
     );
   }
@@ -12167,11 +21552,11 @@ spurious results.`);
     }
     return false;
   }
-  var defaultMakeData, forEach, slice, hasOwnProperty, Trie;
+  var defaultMakeData, forEach2, slice, hasOwnProperty, Trie;
   var init_lib = __esm({
     "node_modules/@wry/trie/lib/index.js"() {
       defaultMakeData = () => /* @__PURE__ */ Object.create(null);
-      ({ forEach, slice } = Array.prototype);
+      ({ forEach: forEach2, slice } = Array.prototype);
       ({ hasOwnProperty } = Object.prototype);
       Trie = class {
         constructor(weakness = true, makeData = defaultMakeData) {
@@ -12183,7 +21568,7 @@ spurious results.`);
         }
         lookupArray(array) {
           let node = this;
-          forEach.call(array, (key) => node = node.getChildTrie(key));
+          forEach2.call(array, (key) => node = node.getChildTrie(key));
           return hasOwnProperty.call(node, "data") ? node.data : node.data = this.makeData(slice.call(array));
         }
         peek() {
@@ -12749,13 +22134,13 @@ spurious results.`);
   });
 
   // node_modules/@apollo/client/utilities/graphql/transform.js
-  function isEmpty(op, fragmentMap) {
+  function isEmpty2(op, fragmentMap) {
     return !op || op.selectionSet.selections.every(function(selection) {
-      return selection.kind === Kind.FRAGMENT_SPREAD && isEmpty(fragmentMap[selection.name.value], fragmentMap);
+      return selection.kind === Kind.FRAGMENT_SPREAD && isEmpty2(fragmentMap[selection.name.value], fragmentMap);
     });
   }
   function nullIfDocIsEmpty(doc) {
-    return isEmpty(getOperationDefinition(doc) || getFragmentDefinition(doc), createFragmentMap(getFragmentDefinitions(doc))) ? null : doc;
+    return isEmpty2(getOperationDefinition(doc) || getFragmentDefinition(doc), createFragmentMap(getFragmentDefinitions(doc))) ? null : doc;
   }
   function getDirectiveMatcher(configs) {
     var names = /* @__PURE__ */ new Map();
@@ -13414,7 +22799,7 @@ spurious results.`);
           }
           return new Subscription(observer, this._subscriber);
         };
-        _proto3.forEach = function forEach5(fn) {
+        _proto3.forEach = function forEach6(fn) {
           var _this = this;
           return new Promise(function(resolve2, reject2) {
             if (typeof fn !== "function") {
@@ -13488,7 +22873,7 @@ spurious results.`);
             });
           });
         };
-        _proto3.reduce = function reduce2(fn) {
+        _proto3.reduce = function reduce3(fn) {
           var _this4 = this;
           if (typeof fn !== "function")
             throw new TypeError(fn + " is not a function");
@@ -13886,13 +23271,13 @@ spurious results.`);
 
   // node_modules/@apollo/client/utilities/observables/subclassing.js
   function fixObservableSubclass(subclass) {
-    function set(key) {
+    function set3(key) {
       Object.defineProperty(subclass, key, { value: Observable });
     }
     if (canUseSymbol && Symbol.species) {
-      set(Symbol.species);
+      set3(Symbol.species);
     }
-    set("@@species");
+    set3("@@species");
     return subclass;
   }
   var init_subclassing = __esm({
@@ -15335,11 +24720,11 @@ spurious results.`);
     }
     return false;
   }
-  var defaultMakeData2, forEach2, slice2, hasOwnProperty5, Trie2;
+  var defaultMakeData2, forEach3, slice2, hasOwnProperty5, Trie2;
   var init_lib3 = __esm({
     "node_modules/optimism/node_modules/@wry/trie/lib/index.js"() {
       defaultMakeData2 = () => /* @__PURE__ */ Object.create(null);
-      ({ forEach: forEach2, slice: slice2 } = Array.prototype);
+      ({ forEach: forEach3, slice: slice2 } = Array.prototype);
       ({ hasOwnProperty: hasOwnProperty5 } = Object.prototype);
       Trie2 = class {
         constructor(weakness = true, makeData = defaultMakeData2) {
@@ -15351,7 +24736,7 @@ spurious results.`);
         }
         lookupArray(array) {
           let node = this;
-          forEach2.call(array, (key) => node = node.getChildTrie(key));
+          forEach3.call(array, (key) => node = node.getChildTrie(key));
           return hasOwnProperty5.call(node, "data") ? node.data : node.data = this.makeData(slice2.call(array));
         }
         peek(...array) {
@@ -15627,9 +25012,9 @@ spurious results.`);
   var init_helpers = __esm({
     "node_modules/optimism/lib/helpers.js"() {
       ({ hasOwnProperty: hasOwnProperty6 } = Object.prototype);
-      arrayFromSet = Array.from || function(set) {
+      arrayFromSet = Array.from || function(set3) {
         const array = [];
-        set.forEach((item) => array.push(item));
+        set3.forEach((item) => array.push(item));
         return array;
       };
     }
@@ -17505,8 +26890,8 @@ spurious results.`);
           var _this = this;
           var existing = this.getTypePolicy(typename);
           var keyFields = incoming.keyFields, fields = incoming.fields;
-          function setMerge(existing2, merge2) {
-            existing2.merge = typeof merge2 === "function" ? merge2 : merge2 === true ? mergeTrueFn : merge2 === false ? mergeFalseFn : existing2.merge;
+          function setMerge(existing2, merge4) {
+            existing2.merge = typeof merge4 === "function" ? merge4 : merge4 === true ? mergeTrueFn : merge4 === false ? mergeFalseFn : existing2.merge;
           }
           setMerge(existing, incoming.merge);
           existing.keyFn = // Pass false to disable normalization for this typename.
@@ -17518,14 +26903,14 @@ spurious results.`);
               if (typeof incoming2 === "function") {
                 existing2.read = incoming2;
               } else {
-                var keyArgs = incoming2.keyArgs, read = incoming2.read, merge2 = incoming2.merge;
+                var keyArgs = incoming2.keyArgs, read = incoming2.read, merge4 = incoming2.merge;
                 existing2.keyFn = // Pass false to disable argument-based differentiation of
                 // field identities.
                 keyArgs === false ? simpleKeyArgsFn : isArray(keyArgs) ? keyArgsFnFromSpecifier(keyArgs) : typeof keyArgs === "function" ? keyArgs : existing2.keyFn;
                 if (typeof read === "function") {
                   existing2.read = read;
                 }
-                setMerge(existing2, merge2);
+                setMerge(existing2, merge4);
               }
               if (existing2.read && existing2.merge) {
                 existing2.keyFn = existing2.keyFn || simpleKeyArgsFn;
@@ -17727,25 +27112,25 @@ spurious results.`);
         };
         Policies2.prototype.getMergeFunction = function(parentTypename, fieldName, childTypename) {
           var policy = this.getFieldPolicy(parentTypename, fieldName, false);
-          var merge2 = policy && policy.merge;
-          if (!merge2 && childTypename) {
+          var merge4 = policy && policy.merge;
+          if (!merge4 && childTypename) {
             policy = this.getTypePolicy(childTypename);
-            merge2 = policy && policy.merge;
+            merge4 = policy && policy.merge;
           }
-          return merge2;
+          return merge4;
         };
         Policies2.prototype.runMergeFunction = function(existing, incoming, _a2, context, storage) {
-          var field = _a2.field, typename = _a2.typename, merge2 = _a2.merge;
-          if (merge2 === mergeTrueFn) {
+          var field = _a2.field, typename = _a2.typename, merge4 = _a2.merge;
+          if (merge4 === mergeTrueFn) {
             return makeMergeObjectsFunction(context.store)(existing, incoming);
           }
-          if (merge2 === mergeFalseFn) {
+          if (merge4 === mergeFalseFn) {
             return incoming;
           }
           if (context.overwrite) {
             existing = void 0;
           }
-          return merge2(existing, incoming, makeFieldFunctionOptions(
+          return merge4(existing, incoming, makeFieldFunctionOptions(
             this,
             // Unlike options.readField for read functions, we do not fall
             // back to the current object if no foreignObjOrRef is provided,
@@ -17951,13 +27336,13 @@ spurious results.`);
               if (field.selectionSet && (isReference(incomingValue) || storeValueIsStoreObject(incomingValue))) {
                 childTypename = readField("__typename", incomingValue);
               }
-              var merge2 = policies.getMergeFunction(typename, field.name.value, childTypename);
-              if (merge2) {
+              var merge4 = policies.getMergeFunction(typename, field.name.value, childTypename);
+              if (merge4) {
                 childTree.info = {
                   // TODO Check compatibility against any existing childTree.field?
                   field,
                   typename,
-                  merge: merge2
+                  merge: merge4
                 };
               } else {
                 maybeRecycleChildMergeTree(mergeTree, storeFieldName);
@@ -20895,12 +30280,12 @@ spurious results.`);
             setTimeout(function() {
               if (typeof window !== "undefined" && window.document && window.top === window.self && !window.__APOLLO_DEVTOOLS_GLOBAL_HOOK__) {
                 var nav = window.navigator;
-                var ua = nav && nav.userAgent;
+                var ua2 = nav && nav.userAgent;
                 var url = void 0;
-                if (typeof ua === "string") {
-                  if (ua.indexOf("Chrome/") > -1) {
+                if (typeof ua2 === "string") {
+                  if (ua2.indexOf("Chrome/") > -1) {
                     url = "https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm";
-                  } else if (ua.indexOf("Firefox/") > -1) {
+                  } else if (ua2.indexOf("Firefox/") > -1) {
                     url = "https://addons.mozilla.org/en-US/firefox/addon/apollo-developer-tools/";
                   }
                 }
@@ -22516,176 +31901,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_freeGlobal.js
-  var require_freeGlobal = __commonJS({
-    "node_modules/lodash/_freeGlobal.js"(exports, module2) {
-      var freeGlobal = typeof global == "object" && global && global.Object === Object && global;
-      module2.exports = freeGlobal;
-    }
-  });
-
-  // node_modules/lodash/_root.js
-  var require_root = __commonJS({
-    "node_modules/lodash/_root.js"(exports, module2) {
-      var freeGlobal = require_freeGlobal();
-      var freeSelf = typeof self == "object" && self && self.Object === Object && self;
-      var root2 = freeGlobal || freeSelf || Function("return this")();
-      module2.exports = root2;
-    }
-  });
-
-  // node_modules/lodash/_Symbol.js
-  var require_Symbol = __commonJS({
-    "node_modules/lodash/_Symbol.js"(exports, module2) {
-      var root2 = require_root();
-      var Symbol2 = root2.Symbol;
-      module2.exports = Symbol2;
-    }
-  });
-
-  // node_modules/lodash/_arrayMap.js
-  var require_arrayMap = __commonJS({
-    "node_modules/lodash/_arrayMap.js"(exports, module2) {
-      function arrayMap(array, iteratee) {
-        var index = -1, length = array == null ? 0 : array.length, result2 = Array(length);
-        while (++index < length) {
-          result2[index] = iteratee(array[index], index, array);
-        }
-        return result2;
-      }
-      module2.exports = arrayMap;
-    }
-  });
-
-  // node_modules/lodash/isArray.js
-  var require_isArray = __commonJS({
-    "node_modules/lodash/isArray.js"(exports, module2) {
-      var isArray2 = Array.isArray;
-      module2.exports = isArray2;
-    }
-  });
-
-  // node_modules/lodash/_getRawTag.js
-  var require_getRawTag = __commonJS({
-    "node_modules/lodash/_getRawTag.js"(exports, module2) {
-      var Symbol2 = require_Symbol();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      var nativeObjectToString = objectProto.toString;
-      var symToStringTag = Symbol2 ? Symbol2.toStringTag : void 0;
-      function getRawTag(value) {
-        var isOwn = hasOwnProperty9.call(value, symToStringTag), tag = value[symToStringTag];
-        try {
-          value[symToStringTag] = void 0;
-          var unmasked = true;
-        } catch (e) {
-        }
-        var result2 = nativeObjectToString.call(value);
-        if (unmasked) {
-          if (isOwn) {
-            value[symToStringTag] = tag;
-          } else {
-            delete value[symToStringTag];
-          }
-        }
-        return result2;
-      }
-      module2.exports = getRawTag;
-    }
-  });
-
-  // node_modules/lodash/_objectToString.js
-  var require_objectToString = __commonJS({
-    "node_modules/lodash/_objectToString.js"(exports, module2) {
-      var objectProto = Object.prototype;
-      var nativeObjectToString = objectProto.toString;
-      function objectToString(value) {
-        return nativeObjectToString.call(value);
-      }
-      module2.exports = objectToString;
-    }
-  });
-
-  // node_modules/lodash/_baseGetTag.js
-  var require_baseGetTag = __commonJS({
-    "node_modules/lodash/_baseGetTag.js"(exports, module2) {
-      var Symbol2 = require_Symbol();
-      var getRawTag = require_getRawTag();
-      var objectToString = require_objectToString();
-      var nullTag = "[object Null]";
-      var undefinedTag = "[object Undefined]";
-      var symToStringTag = Symbol2 ? Symbol2.toStringTag : void 0;
-      function baseGetTag(value) {
-        if (value == null) {
-          return value === void 0 ? undefinedTag : nullTag;
-        }
-        return symToStringTag && symToStringTag in Object(value) ? getRawTag(value) : objectToString(value);
-      }
-      module2.exports = baseGetTag;
-    }
-  });
-
-  // node_modules/lodash/isObjectLike.js
-  var require_isObjectLike = __commonJS({
-    "node_modules/lodash/isObjectLike.js"(exports, module2) {
-      function isObjectLike2(value) {
-        return value != null && typeof value == "object";
-      }
-      module2.exports = isObjectLike2;
-    }
-  });
-
-  // node_modules/lodash/isSymbol.js
-  var require_isSymbol = __commonJS({
-    "node_modules/lodash/isSymbol.js"(exports, module2) {
-      var baseGetTag = require_baseGetTag();
-      var isObjectLike2 = require_isObjectLike();
-      var symbolTag = "[object Symbol]";
-      function isSymbol(value) {
-        return typeof value == "symbol" || isObjectLike2(value) && baseGetTag(value) == symbolTag;
-      }
-      module2.exports = isSymbol;
-    }
-  });
-
-  // node_modules/lodash/_baseToString.js
-  var require_baseToString = __commonJS({
-    "node_modules/lodash/_baseToString.js"(exports, module2) {
-      var Symbol2 = require_Symbol();
-      var arrayMap = require_arrayMap();
-      var isArray2 = require_isArray();
-      var isSymbol = require_isSymbol();
-      var INFINITY = 1 / 0;
-      var symbolProto = Symbol2 ? Symbol2.prototype : void 0;
-      var symbolToString = symbolProto ? symbolProto.toString : void 0;
-      function baseToString(value) {
-        if (typeof value == "string") {
-          return value;
-        }
-        if (isArray2(value)) {
-          return arrayMap(value, baseToString) + "";
-        }
-        if (isSymbol(value)) {
-          return symbolToString ? symbolToString.call(value) : "";
-        }
-        var result2 = value + "";
-        return result2 == "0" && 1 / value == -INFINITY ? "-0" : result2;
-      }
-      module2.exports = baseToString;
-    }
-  });
-
-  // node_modules/lodash/toString.js
-  var require_toString = __commonJS({
-    "node_modules/lodash/toString.js"(exports, module2) {
-      var baseToString = require_baseToString();
-      function toString3(value) {
-        return value == null ? "" : baseToString(value);
-      }
-      module2.exports = toString3;
-    }
-  });
-
   // node_modules/lodash/_baseSlice.js
   var require_baseSlice = __commonJS({
     "node_modules/lodash/_baseSlice.js"(exports, module2) {
@@ -22720,24 +31935,6 @@ spurious results.`);
         return !start && end >= length ? array : baseSlice(array, start, end);
       }
       module2.exports = castSlice;
-    }
-  });
-
-  // node_modules/lodash/_hasUnicode.js
-  var require_hasUnicode = __commonJS({
-    "node_modules/lodash/_hasUnicode.js"(exports, module2) {
-      var rsAstralRange = "\\ud800-\\udfff";
-      var rsComboMarksRange = "\\u0300-\\u036f";
-      var reComboHalfMarksRange = "\\ufe20-\\ufe2f";
-      var rsComboSymbolsRange = "\\u20d0-\\u20ff";
-      var rsComboRange = rsComboMarksRange + reComboHalfMarksRange + rsComboSymbolsRange;
-      var rsVarRange = "\\ufe0e\\ufe0f";
-      var rsZWJ = "\\u200d";
-      var reHasUnicode = RegExp("[" + rsZWJ + rsAstralRange + rsComboRange + rsVarRange + "]");
-      function hasUnicode(string) {
-        return reHasUnicode.test(string);
-      }
-      module2.exports = hasUnicode;
     }
   });
 
@@ -22832,23 +32029,6 @@ spurious results.`);
         return upperFirst(toString3(string).toLowerCase());
       }
       module2.exports = capitalize;
-    }
-  });
-
-  // node_modules/lodash/_arrayReduce.js
-  var require_arrayReduce = __commonJS({
-    "node_modules/lodash/_arrayReduce.js"(exports, module2) {
-      function arrayReduce(array, iteratee, accumulator, initAccum) {
-        var index = -1, length = array == null ? 0 : array.length;
-        if (initAccum && length) {
-          accumulator = array[++index];
-        }
-        while (++index < length) {
-          accumulator = iteratee(accumulator, array[index], index, array);
-        }
-        return accumulator;
-      }
-      module2.exports = arrayReduce;
     }
   });
 
@@ -24177,7 +33357,7 @@ spurious results.`);
   });
 
   // packages/utilities/fp/utils/index.ts
-  var emptyArray, emptyObject, identity2, constant, compose, flip, thrush, constantFalse, constantTrue, not, complement, optionToBool, resultToBool, isNil, notNil, unionWith, union, unionTo, zipWith, zip, reduce, concat, concatTo, constantIdentity, parseIntWithRadix, safeParseInt, flatMap, flat, view, constantNone, okToOption, errToOption, extractBool, extractArray, extractFunctionFromOption, extractFunctionFromResult, optionToArray, optionOfEmptyArray, resultOfEmptyArray, resultOfEmptyObject, values;
+  var emptyArray, emptyObject, identity2, constant, compose, flip, thrush, constantFalse, constantTrue, not, complement, optionToBool, resultToBool, isNil, notNil, unionWith, union, unionTo, zipWith, zip, reduce2, concat, concatTo, constantIdentity, parseIntWithRadix, safeParseInt, flatMap, flat, view, constantNone, okToOption, errToOption, extractBool, extractArray, extractFunctionFromOption, extractFunctionFromResult, optionToArray, optionOfEmptyArray, resultOfEmptyArray, resultOfEmptyObject, values;
   var init_utils2 = __esm({
     "packages/utilities/fp/utils/index.ts"() {
       "use strict";
@@ -24263,7 +33443,7 @@ spurious results.`);
         return rv;
       };
       zip = zipWith((x) => (y) => [x, y]);
-      reduce = (reducer) => (init2) => (xs) => xs.reduce(reducer, init2);
+      reduce2 = (reducer) => (init2) => (xs) => xs.reduce(reducer, init2);
       concat = (ys) => ys.length ? (xs) => xs.length ? xs.concat(ys) : ys : identity2;
       concatTo = flip(concat);
       constantIdentity = constant(identity2);
@@ -24272,7 +33452,7 @@ spurious results.`);
         return isNaN(parsed) ? None : Some(parsed);
       };
       safeParseInt = parseIntWithRadix(10);
-      flatMap = (f) => reduce((result2, item) => {
+      flatMap = (f) => reduce2((result2, item) => {
         const ys = f(item);
         if (!ys.length) {
           return result2;
@@ -25247,640 +34427,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_isKey.js
-  var require_isKey = __commonJS({
-    "node_modules/lodash/_isKey.js"(exports, module2) {
-      var isArray2 = require_isArray();
-      var isSymbol = require_isSymbol();
-      var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/;
-      var reIsPlainProp = /^\w*$/;
-      function isKey(value, object) {
-        if (isArray2(value)) {
-          return false;
-        }
-        var type = typeof value;
-        if (type == "number" || type == "symbol" || type == "boolean" || value == null || isSymbol(value)) {
-          return true;
-        }
-        return reIsPlainProp.test(value) || !reIsDeepProp.test(value) || object != null && value in Object(object);
-      }
-      module2.exports = isKey;
-    }
-  });
-
-  // node_modules/lodash/isObject.js
-  var require_isObject = __commonJS({
-    "node_modules/lodash/isObject.js"(exports, module2) {
-      function isObject2(value) {
-        var type = typeof value;
-        return value != null && (type == "object" || type == "function");
-      }
-      module2.exports = isObject2;
-    }
-  });
-
-  // node_modules/lodash/isFunction.js
-  var require_isFunction = __commonJS({
-    "node_modules/lodash/isFunction.js"(exports, module2) {
-      var baseGetTag = require_baseGetTag();
-      var isObject2 = require_isObject();
-      var asyncTag = "[object AsyncFunction]";
-      var funcTag = "[object Function]";
-      var genTag = "[object GeneratorFunction]";
-      var proxyTag = "[object Proxy]";
-      function isFunction3(value) {
-        if (!isObject2(value)) {
-          return false;
-        }
-        var tag = baseGetTag(value);
-        return tag == funcTag || tag == genTag || tag == asyncTag || tag == proxyTag;
-      }
-      module2.exports = isFunction3;
-    }
-  });
-
-  // node_modules/lodash/_coreJsData.js
-  var require_coreJsData = __commonJS({
-    "node_modules/lodash/_coreJsData.js"(exports, module2) {
-      var root2 = require_root();
-      var coreJsData = root2["__core-js_shared__"];
-      module2.exports = coreJsData;
-    }
-  });
-
-  // node_modules/lodash/_isMasked.js
-  var require_isMasked = __commonJS({
-    "node_modules/lodash/_isMasked.js"(exports, module2) {
-      var coreJsData = require_coreJsData();
-      var maskSrcKey = function() {
-        var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || "");
-        return uid ? "Symbol(src)_1." + uid : "";
-      }();
-      function isMasked(func) {
-        return !!maskSrcKey && maskSrcKey in func;
-      }
-      module2.exports = isMasked;
-    }
-  });
-
-  // node_modules/lodash/_toSource.js
-  var require_toSource = __commonJS({
-    "node_modules/lodash/_toSource.js"(exports, module2) {
-      var funcProto = Function.prototype;
-      var funcToString = funcProto.toString;
-      function toSource(func) {
-        if (func != null) {
-          try {
-            return funcToString.call(func);
-          } catch (e) {
-          }
-          try {
-            return func + "";
-          } catch (e) {
-          }
-        }
-        return "";
-      }
-      module2.exports = toSource;
-    }
-  });
-
-  // node_modules/lodash/_baseIsNative.js
-  var require_baseIsNative = __commonJS({
-    "node_modules/lodash/_baseIsNative.js"(exports, module2) {
-      var isFunction3 = require_isFunction();
-      var isMasked = require_isMasked();
-      var isObject2 = require_isObject();
-      var toSource = require_toSource();
-      var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
-      var reIsHostCtor = /^\[object .+?Constructor\]$/;
-      var funcProto = Function.prototype;
-      var objectProto = Object.prototype;
-      var funcToString = funcProto.toString;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      var reIsNative = RegExp(
-        "^" + funcToString.call(hasOwnProperty9).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$"
-      );
-      function baseIsNative(value) {
-        if (!isObject2(value) || isMasked(value)) {
-          return false;
-        }
-        var pattern = isFunction3(value) ? reIsNative : reIsHostCtor;
-        return pattern.test(toSource(value));
-      }
-      module2.exports = baseIsNative;
-    }
-  });
-
-  // node_modules/lodash/_getValue.js
-  var require_getValue = __commonJS({
-    "node_modules/lodash/_getValue.js"(exports, module2) {
-      function getValue(object, key) {
-        return object == null ? void 0 : object[key];
-      }
-      module2.exports = getValue;
-    }
-  });
-
-  // node_modules/lodash/_getNative.js
-  var require_getNative = __commonJS({
-    "node_modules/lodash/_getNative.js"(exports, module2) {
-      var baseIsNative = require_baseIsNative();
-      var getValue = require_getValue();
-      function getNative(object, key) {
-        var value = getValue(object, key);
-        return baseIsNative(value) ? value : void 0;
-      }
-      module2.exports = getNative;
-    }
-  });
-
-  // node_modules/lodash/_nativeCreate.js
-  var require_nativeCreate = __commonJS({
-    "node_modules/lodash/_nativeCreate.js"(exports, module2) {
-      var getNative = require_getNative();
-      var nativeCreate = getNative(Object, "create");
-      module2.exports = nativeCreate;
-    }
-  });
-
-  // node_modules/lodash/_hashClear.js
-  var require_hashClear = __commonJS({
-    "node_modules/lodash/_hashClear.js"(exports, module2) {
-      var nativeCreate = require_nativeCreate();
-      function hashClear() {
-        this.__data__ = nativeCreate ? nativeCreate(null) : {};
-        this.size = 0;
-      }
-      module2.exports = hashClear;
-    }
-  });
-
-  // node_modules/lodash/_hashDelete.js
-  var require_hashDelete = __commonJS({
-    "node_modules/lodash/_hashDelete.js"(exports, module2) {
-      function hashDelete(key) {
-        var result2 = this.has(key) && delete this.__data__[key];
-        this.size -= result2 ? 1 : 0;
-        return result2;
-      }
-      module2.exports = hashDelete;
-    }
-  });
-
-  // node_modules/lodash/_hashGet.js
-  var require_hashGet = __commonJS({
-    "node_modules/lodash/_hashGet.js"(exports, module2) {
-      var nativeCreate = require_nativeCreate();
-      var HASH_UNDEFINED = "__lodash_hash_undefined__";
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function hashGet(key) {
-        var data = this.__data__;
-        if (nativeCreate) {
-          var result2 = data[key];
-          return result2 === HASH_UNDEFINED ? void 0 : result2;
-        }
-        return hasOwnProperty9.call(data, key) ? data[key] : void 0;
-      }
-      module2.exports = hashGet;
-    }
-  });
-
-  // node_modules/lodash/_hashHas.js
-  var require_hashHas = __commonJS({
-    "node_modules/lodash/_hashHas.js"(exports, module2) {
-      var nativeCreate = require_nativeCreate();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function hashHas(key) {
-        var data = this.__data__;
-        return nativeCreate ? data[key] !== void 0 : hasOwnProperty9.call(data, key);
-      }
-      module2.exports = hashHas;
-    }
-  });
-
-  // node_modules/lodash/_hashSet.js
-  var require_hashSet = __commonJS({
-    "node_modules/lodash/_hashSet.js"(exports, module2) {
-      var nativeCreate = require_nativeCreate();
-      var HASH_UNDEFINED = "__lodash_hash_undefined__";
-      function hashSet(key, value) {
-        var data = this.__data__;
-        this.size += this.has(key) ? 0 : 1;
-        data[key] = nativeCreate && value === void 0 ? HASH_UNDEFINED : value;
-        return this;
-      }
-      module2.exports = hashSet;
-    }
-  });
-
-  // node_modules/lodash/_Hash.js
-  var require_Hash = __commonJS({
-    "node_modules/lodash/_Hash.js"(exports, module2) {
-      var hashClear = require_hashClear();
-      var hashDelete = require_hashDelete();
-      var hashGet = require_hashGet();
-      var hashHas = require_hashHas();
-      var hashSet = require_hashSet();
-      function Hash(entries) {
-        var index = -1, length = entries == null ? 0 : entries.length;
-        this.clear();
-        while (++index < length) {
-          var entry = entries[index];
-          this.set(entry[0], entry[1]);
-        }
-      }
-      Hash.prototype.clear = hashClear;
-      Hash.prototype["delete"] = hashDelete;
-      Hash.prototype.get = hashGet;
-      Hash.prototype.has = hashHas;
-      Hash.prototype.set = hashSet;
-      module2.exports = Hash;
-    }
-  });
-
-  // node_modules/lodash/_listCacheClear.js
-  var require_listCacheClear = __commonJS({
-    "node_modules/lodash/_listCacheClear.js"(exports, module2) {
-      function listCacheClear() {
-        this.__data__ = [];
-        this.size = 0;
-      }
-      module2.exports = listCacheClear;
-    }
-  });
-
-  // node_modules/lodash/eq.js
-  var require_eq = __commonJS({
-    "node_modules/lodash/eq.js"(exports, module2) {
-      function eq(value, other) {
-        return value === other || value !== value && other !== other;
-      }
-      module2.exports = eq;
-    }
-  });
-
-  // node_modules/lodash/_assocIndexOf.js
-  var require_assocIndexOf = __commonJS({
-    "node_modules/lodash/_assocIndexOf.js"(exports, module2) {
-      var eq = require_eq();
-      function assocIndexOf(array, key) {
-        var length = array.length;
-        while (length--) {
-          if (eq(array[length][0], key)) {
-            return length;
-          }
-        }
-        return -1;
-      }
-      module2.exports = assocIndexOf;
-    }
-  });
-
-  // node_modules/lodash/_listCacheDelete.js
-  var require_listCacheDelete = __commonJS({
-    "node_modules/lodash/_listCacheDelete.js"(exports, module2) {
-      var assocIndexOf = require_assocIndexOf();
-      var arrayProto = Array.prototype;
-      var splice = arrayProto.splice;
-      function listCacheDelete(key) {
-        var data = this.__data__, index = assocIndexOf(data, key);
-        if (index < 0) {
-          return false;
-        }
-        var lastIndex = data.length - 1;
-        if (index == lastIndex) {
-          data.pop();
-        } else {
-          splice.call(data, index, 1);
-        }
-        --this.size;
-        return true;
-      }
-      module2.exports = listCacheDelete;
-    }
-  });
-
-  // node_modules/lodash/_listCacheGet.js
-  var require_listCacheGet = __commonJS({
-    "node_modules/lodash/_listCacheGet.js"(exports, module2) {
-      var assocIndexOf = require_assocIndexOf();
-      function listCacheGet(key) {
-        var data = this.__data__, index = assocIndexOf(data, key);
-        return index < 0 ? void 0 : data[index][1];
-      }
-      module2.exports = listCacheGet;
-    }
-  });
-
-  // node_modules/lodash/_listCacheHas.js
-  var require_listCacheHas = __commonJS({
-    "node_modules/lodash/_listCacheHas.js"(exports, module2) {
-      var assocIndexOf = require_assocIndexOf();
-      function listCacheHas(key) {
-        return assocIndexOf(this.__data__, key) > -1;
-      }
-      module2.exports = listCacheHas;
-    }
-  });
-
-  // node_modules/lodash/_listCacheSet.js
-  var require_listCacheSet = __commonJS({
-    "node_modules/lodash/_listCacheSet.js"(exports, module2) {
-      var assocIndexOf = require_assocIndexOf();
-      function listCacheSet(key, value) {
-        var data = this.__data__, index = assocIndexOf(data, key);
-        if (index < 0) {
-          ++this.size;
-          data.push([key, value]);
-        } else {
-          data[index][1] = value;
-        }
-        return this;
-      }
-      module2.exports = listCacheSet;
-    }
-  });
-
-  // node_modules/lodash/_ListCache.js
-  var require_ListCache = __commonJS({
-    "node_modules/lodash/_ListCache.js"(exports, module2) {
-      var listCacheClear = require_listCacheClear();
-      var listCacheDelete = require_listCacheDelete();
-      var listCacheGet = require_listCacheGet();
-      var listCacheHas = require_listCacheHas();
-      var listCacheSet = require_listCacheSet();
-      function ListCache(entries) {
-        var index = -1, length = entries == null ? 0 : entries.length;
-        this.clear();
-        while (++index < length) {
-          var entry = entries[index];
-          this.set(entry[0], entry[1]);
-        }
-      }
-      ListCache.prototype.clear = listCacheClear;
-      ListCache.prototype["delete"] = listCacheDelete;
-      ListCache.prototype.get = listCacheGet;
-      ListCache.prototype.has = listCacheHas;
-      ListCache.prototype.set = listCacheSet;
-      module2.exports = ListCache;
-    }
-  });
-
-  // node_modules/lodash/_Map.js
-  var require_Map = __commonJS({
-    "node_modules/lodash/_Map.js"(exports, module2) {
-      var getNative = require_getNative();
-      var root2 = require_root();
-      var Map2 = getNative(root2, "Map");
-      module2.exports = Map2;
-    }
-  });
-
-  // node_modules/lodash/_mapCacheClear.js
-  var require_mapCacheClear = __commonJS({
-    "node_modules/lodash/_mapCacheClear.js"(exports, module2) {
-      var Hash = require_Hash();
-      var ListCache = require_ListCache();
-      var Map2 = require_Map();
-      function mapCacheClear() {
-        this.size = 0;
-        this.__data__ = {
-          "hash": new Hash(),
-          "map": new (Map2 || ListCache)(),
-          "string": new Hash()
-        };
-      }
-      module2.exports = mapCacheClear;
-    }
-  });
-
-  // node_modules/lodash/_isKeyable.js
-  var require_isKeyable = __commonJS({
-    "node_modules/lodash/_isKeyable.js"(exports, module2) {
-      function isKeyable(value) {
-        var type = typeof value;
-        return type == "string" || type == "number" || type == "symbol" || type == "boolean" ? value !== "__proto__" : value === null;
-      }
-      module2.exports = isKeyable;
-    }
-  });
-
-  // node_modules/lodash/_getMapData.js
-  var require_getMapData = __commonJS({
-    "node_modules/lodash/_getMapData.js"(exports, module2) {
-      var isKeyable = require_isKeyable();
-      function getMapData(map, key) {
-        var data = map.__data__;
-        return isKeyable(key) ? data[typeof key == "string" ? "string" : "hash"] : data.map;
-      }
-      module2.exports = getMapData;
-    }
-  });
-
-  // node_modules/lodash/_mapCacheDelete.js
-  var require_mapCacheDelete = __commonJS({
-    "node_modules/lodash/_mapCacheDelete.js"(exports, module2) {
-      var getMapData = require_getMapData();
-      function mapCacheDelete(key) {
-        var result2 = getMapData(this, key)["delete"](key);
-        this.size -= result2 ? 1 : 0;
-        return result2;
-      }
-      module2.exports = mapCacheDelete;
-    }
-  });
-
-  // node_modules/lodash/_mapCacheGet.js
-  var require_mapCacheGet = __commonJS({
-    "node_modules/lodash/_mapCacheGet.js"(exports, module2) {
-      var getMapData = require_getMapData();
-      function mapCacheGet(key) {
-        return getMapData(this, key).get(key);
-      }
-      module2.exports = mapCacheGet;
-    }
-  });
-
-  // node_modules/lodash/_mapCacheHas.js
-  var require_mapCacheHas = __commonJS({
-    "node_modules/lodash/_mapCacheHas.js"(exports, module2) {
-      var getMapData = require_getMapData();
-      function mapCacheHas(key) {
-        return getMapData(this, key).has(key);
-      }
-      module2.exports = mapCacheHas;
-    }
-  });
-
-  // node_modules/lodash/_mapCacheSet.js
-  var require_mapCacheSet = __commonJS({
-    "node_modules/lodash/_mapCacheSet.js"(exports, module2) {
-      var getMapData = require_getMapData();
-      function mapCacheSet(key, value) {
-        var data = getMapData(this, key), size = data.size;
-        data.set(key, value);
-        this.size += data.size == size ? 0 : 1;
-        return this;
-      }
-      module2.exports = mapCacheSet;
-    }
-  });
-
-  // node_modules/lodash/_MapCache.js
-  var require_MapCache = __commonJS({
-    "node_modules/lodash/_MapCache.js"(exports, module2) {
-      var mapCacheClear = require_mapCacheClear();
-      var mapCacheDelete = require_mapCacheDelete();
-      var mapCacheGet = require_mapCacheGet();
-      var mapCacheHas = require_mapCacheHas();
-      var mapCacheSet = require_mapCacheSet();
-      function MapCache(entries) {
-        var index = -1, length = entries == null ? 0 : entries.length;
-        this.clear();
-        while (++index < length) {
-          var entry = entries[index];
-          this.set(entry[0], entry[1]);
-        }
-      }
-      MapCache.prototype.clear = mapCacheClear;
-      MapCache.prototype["delete"] = mapCacheDelete;
-      MapCache.prototype.get = mapCacheGet;
-      MapCache.prototype.has = mapCacheHas;
-      MapCache.prototype.set = mapCacheSet;
-      module2.exports = MapCache;
-    }
-  });
-
-  // node_modules/lodash/memoize.js
-  var require_memoize = __commonJS({
-    "node_modules/lodash/memoize.js"(exports, module2) {
-      var MapCache = require_MapCache();
-      var FUNC_ERROR_TEXT = "Expected a function";
-      function memoize2(func, resolver) {
-        if (typeof func != "function" || resolver != null && typeof resolver != "function") {
-          throw new TypeError(FUNC_ERROR_TEXT);
-        }
-        var memoized = function() {
-          var args = arguments, key = resolver ? resolver.apply(this, args) : args[0], cache = memoized.cache;
-          if (cache.has(key)) {
-            return cache.get(key);
-          }
-          var result2 = func.apply(this, args);
-          memoized.cache = cache.set(key, result2) || cache;
-          return result2;
-        };
-        memoized.cache = new (memoize2.Cache || MapCache)();
-        return memoized;
-      }
-      memoize2.Cache = MapCache;
-      module2.exports = memoize2;
-    }
-  });
-
-  // node_modules/lodash/_memoizeCapped.js
-  var require_memoizeCapped = __commonJS({
-    "node_modules/lodash/_memoizeCapped.js"(exports, module2) {
-      var memoize2 = require_memoize();
-      var MAX_MEMOIZE_SIZE = 500;
-      function memoizeCapped(func) {
-        var result2 = memoize2(func, function(key) {
-          if (cache.size === MAX_MEMOIZE_SIZE) {
-            cache.clear();
-          }
-          return key;
-        });
-        var cache = result2.cache;
-        return result2;
-      }
-      module2.exports = memoizeCapped;
-    }
-  });
-
-  // node_modules/lodash/_stringToPath.js
-  var require_stringToPath = __commonJS({
-    "node_modules/lodash/_stringToPath.js"(exports, module2) {
-      var memoizeCapped = require_memoizeCapped();
-      var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
-      var reEscapeChar = /\\(\\)?/g;
-      var stringToPath = memoizeCapped(function(string) {
-        var result2 = [];
-        if (string.charCodeAt(0) === 46) {
-          result2.push("");
-        }
-        string.replace(rePropName, function(match, number, quote, subString) {
-          result2.push(quote ? subString.replace(reEscapeChar, "$1") : number || match);
-        });
-        return result2;
-      });
-      module2.exports = stringToPath;
-    }
-  });
-
-  // node_modules/lodash/_castPath.js
-  var require_castPath = __commonJS({
-    "node_modules/lodash/_castPath.js"(exports, module2) {
-      var isArray2 = require_isArray();
-      var isKey = require_isKey();
-      var stringToPath = require_stringToPath();
-      var toString3 = require_toString();
-      function castPath(value, object) {
-        if (isArray2(value)) {
-          return value;
-        }
-        return isKey(value, object) ? [value] : stringToPath(toString3(value));
-      }
-      module2.exports = castPath;
-    }
-  });
-
-  // node_modules/lodash/_toKey.js
-  var require_toKey = __commonJS({
-    "node_modules/lodash/_toKey.js"(exports, module2) {
-      var isSymbol = require_isSymbol();
-      var INFINITY = 1 / 0;
-      function toKey(value) {
-        if (typeof value == "string" || isSymbol(value)) {
-          return value;
-        }
-        var result2 = value + "";
-        return result2 == "0" && 1 / value == -INFINITY ? "-0" : result2;
-      }
-      module2.exports = toKey;
-    }
-  });
-
-  // node_modules/lodash/_baseGet.js
-  var require_baseGet = __commonJS({
-    "node_modules/lodash/_baseGet.js"(exports, module2) {
-      var castPath = require_castPath();
-      var toKey = require_toKey();
-      function baseGet(object, path) {
-        path = castPath(path, object);
-        var index = 0, length = path.length;
-        while (object != null && index < length) {
-          object = object[toKey(path[index++])];
-        }
-        return index && index == length ? object : void 0;
-      }
-      module2.exports = baseGet;
-    }
-  });
-
-  // node_modules/lodash/get.js
-  var require_get = __commonJS({
-    "node_modules/lodash/get.js"(exports, module2) {
-      var baseGet = require_baseGet();
-      function get6(object, path, defaultValue) {
-        var result2 = object == null ? void 0 : baseGet(object, path);
-        return result2 === void 0 ? defaultValue : result2;
-      }
-      module2.exports = get6;
-    }
-  });
-
   // packages/shared/site/utils/Commerce.ts
   var simplifySkuValues, getProductOptionValueName;
   var init_Commerce = __esm({
@@ -26412,7 +34958,7 @@ spurious results.`);
         function isFunction3(input) {
           return typeof Function !== "undefined" && input instanceof Function || Object.prototype.toString.call(input) === "[object Function]";
         }
-        function set(config) {
+        function set3(config) {
           var prop, i;
           for (i in config) {
             if (hasOwnProp(config, i)) {
@@ -26673,11 +35219,11 @@ spurious results.`);
               hooks.updateOffset(this, keepTime);
               return this;
             } else {
-              return get6(this, unit);
+              return get8(this, unit);
             }
           };
         }
-        function get6(mom, unit) {
+        function get8(mom, unit) {
           return mom.isValid() ? mom._d["get" + (mom._isUTC ? "UTC" : "") + unit]() : NaN;
         }
         function set$1(mom, unit, value) {
@@ -26941,7 +35487,7 @@ spurious results.`);
             hooks.updateOffset(this, true);
             return this;
           } else {
-            return get6(this, "Month");
+            return get8(this, "Month");
           }
         }
         function getDaysInMonth() {
@@ -28645,10 +37191,10 @@ spurious results.`);
           }
           updateOffset = updateOffset == null ? true : updateOffset;
           if (months2) {
-            setMonth(mom, get6(mom, "Month") + months2 * isAdding);
+            setMonth(mom, get8(mom, "Month") + months2 * isAdding);
           }
           if (days2) {
-            set$1(mom, "Date", get6(mom, "Date") + days2 * isAdding);
+            set$1(mom, "Date", get8(mom, "Date") + days2 * isAdding);
           }
           if (milliseconds2) {
             mom._d.setTime(mom._d.valueOf() + milliseconds2 * isAdding);
@@ -29645,7 +38191,7 @@ spurious results.`);
         proto$1.postformat = preParsePostFormat;
         proto$1.relativeTime = relativeTime;
         proto$1.pastFuture = pastFuture;
-        proto$1.set = set;
+        proto$1.set = set3;
         proto$1.eras = localeEras;
         proto$1.erasParse = localeErasParse;
         proto$1.erasConvertYear = localeErasConvertYear;
@@ -31895,347 +40441,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/constant.js
-  var require_constant = __commonJS({
-    "node_modules/lodash/constant.js"(exports, module2) {
-      function constant2(value) {
-        return function() {
-          return value;
-        };
-      }
-      module2.exports = constant2;
-    }
-  });
-
-  // node_modules/lodash/_createBaseFor.js
-  var require_createBaseFor = __commonJS({
-    "node_modules/lodash/_createBaseFor.js"(exports, module2) {
-      function createBaseFor(fromRight) {
-        return function(object, iteratee, keysFunc) {
-          var index = -1, iterable = Object(object), props = keysFunc(object), length = props.length;
-          while (length--) {
-            var key = props[fromRight ? length : ++index];
-            if (iteratee(iterable[key], key, iterable) === false) {
-              break;
-            }
-          }
-          return object;
-        };
-      }
-      module2.exports = createBaseFor;
-    }
-  });
-
-  // node_modules/lodash/_baseFor.js
-  var require_baseFor = __commonJS({
-    "node_modules/lodash/_baseFor.js"(exports, module2) {
-      var createBaseFor = require_createBaseFor();
-      var baseFor = createBaseFor();
-      module2.exports = baseFor;
-    }
-  });
-
-  // node_modules/lodash/_baseTimes.js
-  var require_baseTimes = __commonJS({
-    "node_modules/lodash/_baseTimes.js"(exports, module2) {
-      function baseTimes(n, iteratee) {
-        var index = -1, result2 = Array(n);
-        while (++index < n) {
-          result2[index] = iteratee(index);
-        }
-        return result2;
-      }
-      module2.exports = baseTimes;
-    }
-  });
-
-  // node_modules/lodash/_baseIsArguments.js
-  var require_baseIsArguments = __commonJS({
-    "node_modules/lodash/_baseIsArguments.js"(exports, module2) {
-      var baseGetTag = require_baseGetTag();
-      var isObjectLike2 = require_isObjectLike();
-      var argsTag = "[object Arguments]";
-      function baseIsArguments(value) {
-        return isObjectLike2(value) && baseGetTag(value) == argsTag;
-      }
-      module2.exports = baseIsArguments;
-    }
-  });
-
-  // node_modules/lodash/isArguments.js
-  var require_isArguments = __commonJS({
-    "node_modules/lodash/isArguments.js"(exports, module2) {
-      var baseIsArguments = require_baseIsArguments();
-      var isObjectLike2 = require_isObjectLike();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      var propertyIsEnumerable = objectProto.propertyIsEnumerable;
-      var isArguments = baseIsArguments(function() {
-        return arguments;
-      }()) ? baseIsArguments : function(value) {
-        return isObjectLike2(value) && hasOwnProperty9.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
-      };
-      module2.exports = isArguments;
-    }
-  });
-
-  // node_modules/lodash/stubFalse.js
-  var require_stubFalse = __commonJS({
-    "node_modules/lodash/stubFalse.js"(exports, module2) {
-      function stubFalse() {
-        return false;
-      }
-      module2.exports = stubFalse;
-    }
-  });
-
-  // node_modules/lodash/isBuffer.js
-  var require_isBuffer = __commonJS({
-    "node_modules/lodash/isBuffer.js"(exports, module2) {
-      var root2 = require_root();
-      var stubFalse = require_stubFalse();
-      var freeExports = typeof exports == "object" && exports && !exports.nodeType && exports;
-      var freeModule = freeExports && typeof module2 == "object" && module2 && !module2.nodeType && module2;
-      var moduleExports = freeModule && freeModule.exports === freeExports;
-      var Buffer2 = moduleExports ? root2.Buffer : void 0;
-      var nativeIsBuffer = Buffer2 ? Buffer2.isBuffer : void 0;
-      var isBuffer = nativeIsBuffer || stubFalse;
-      module2.exports = isBuffer;
-    }
-  });
-
-  // node_modules/lodash/_isIndex.js
-  var require_isIndex = __commonJS({
-    "node_modules/lodash/_isIndex.js"(exports, module2) {
-      var MAX_SAFE_INTEGER = 9007199254740991;
-      var reIsUint = /^(?:0|[1-9]\d*)$/;
-      function isIndex(value, length) {
-        var type = typeof value;
-        length = length == null ? MAX_SAFE_INTEGER : length;
-        return !!length && (type == "number" || type != "symbol" && reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
-      }
-      module2.exports = isIndex;
-    }
-  });
-
-  // node_modules/lodash/isLength.js
-  var require_isLength = __commonJS({
-    "node_modules/lodash/isLength.js"(exports, module2) {
-      var MAX_SAFE_INTEGER = 9007199254740991;
-      function isLength(value) {
-        return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
-      }
-      module2.exports = isLength;
-    }
-  });
-
-  // node_modules/lodash/_baseIsTypedArray.js
-  var require_baseIsTypedArray = __commonJS({
-    "node_modules/lodash/_baseIsTypedArray.js"(exports, module2) {
-      var baseGetTag = require_baseGetTag();
-      var isLength = require_isLength();
-      var isObjectLike2 = require_isObjectLike();
-      var argsTag = "[object Arguments]";
-      var arrayTag = "[object Array]";
-      var boolTag = "[object Boolean]";
-      var dateTag = "[object Date]";
-      var errorTag = "[object Error]";
-      var funcTag = "[object Function]";
-      var mapTag = "[object Map]";
-      var numberTag = "[object Number]";
-      var objectTag = "[object Object]";
-      var regexpTag = "[object RegExp]";
-      var setTag = "[object Set]";
-      var stringTag = "[object String]";
-      var weakMapTag = "[object WeakMap]";
-      var arrayBufferTag = "[object ArrayBuffer]";
-      var dataViewTag = "[object DataView]";
-      var float32Tag = "[object Float32Array]";
-      var float64Tag = "[object Float64Array]";
-      var int8Tag = "[object Int8Array]";
-      var int16Tag = "[object Int16Array]";
-      var int32Tag = "[object Int32Array]";
-      var uint8Tag = "[object Uint8Array]";
-      var uint8ClampedTag = "[object Uint8ClampedArray]";
-      var uint16Tag = "[object Uint16Array]";
-      var uint32Tag = "[object Uint32Array]";
-      var typedArrayTags = {};
-      typedArrayTags[float32Tag] = typedArrayTags[float64Tag] = typedArrayTags[int8Tag] = typedArrayTags[int16Tag] = typedArrayTags[int32Tag] = typedArrayTags[uint8Tag] = typedArrayTags[uint8ClampedTag] = typedArrayTags[uint16Tag] = typedArrayTags[uint32Tag] = true;
-      typedArrayTags[argsTag] = typedArrayTags[arrayTag] = typedArrayTags[arrayBufferTag] = typedArrayTags[boolTag] = typedArrayTags[dataViewTag] = typedArrayTags[dateTag] = typedArrayTags[errorTag] = typedArrayTags[funcTag] = typedArrayTags[mapTag] = typedArrayTags[numberTag] = typedArrayTags[objectTag] = typedArrayTags[regexpTag] = typedArrayTags[setTag] = typedArrayTags[stringTag] = typedArrayTags[weakMapTag] = false;
-      function baseIsTypedArray(value) {
-        return isObjectLike2(value) && isLength(value.length) && !!typedArrayTags[baseGetTag(value)];
-      }
-      module2.exports = baseIsTypedArray;
-    }
-  });
-
-  // node_modules/lodash/_baseUnary.js
-  var require_baseUnary = __commonJS({
-    "node_modules/lodash/_baseUnary.js"(exports, module2) {
-      function baseUnary(func) {
-        return function(value) {
-          return func(value);
-        };
-      }
-      module2.exports = baseUnary;
-    }
-  });
-
-  // node_modules/lodash/_nodeUtil.js
-  var require_nodeUtil = __commonJS({
-    "node_modules/lodash/_nodeUtil.js"(exports, module2) {
-      var freeGlobal = require_freeGlobal();
-      var freeExports = typeof exports == "object" && exports && !exports.nodeType && exports;
-      var freeModule = freeExports && typeof module2 == "object" && module2 && !module2.nodeType && module2;
-      var moduleExports = freeModule && freeModule.exports === freeExports;
-      var freeProcess = moduleExports && freeGlobal.process;
-      var nodeUtil = function() {
-        try {
-          var types = freeModule && freeModule.require && freeModule.require("util").types;
-          if (types) {
-            return types;
-          }
-          return freeProcess && freeProcess.binding && freeProcess.binding("util");
-        } catch (e) {
-        }
-      }();
-      module2.exports = nodeUtil;
-    }
-  });
-
-  // node_modules/lodash/isTypedArray.js
-  var require_isTypedArray = __commonJS({
-    "node_modules/lodash/isTypedArray.js"(exports, module2) {
-      var baseIsTypedArray = require_baseIsTypedArray();
-      var baseUnary = require_baseUnary();
-      var nodeUtil = require_nodeUtil();
-      var nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
-      var isTypedArray = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedArray;
-      module2.exports = isTypedArray;
-    }
-  });
-
-  // node_modules/lodash/_arrayLikeKeys.js
-  var require_arrayLikeKeys = __commonJS({
-    "node_modules/lodash/_arrayLikeKeys.js"(exports, module2) {
-      var baseTimes = require_baseTimes();
-      var isArguments = require_isArguments();
-      var isArray2 = require_isArray();
-      var isBuffer = require_isBuffer();
-      var isIndex = require_isIndex();
-      var isTypedArray = require_isTypedArray();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function arrayLikeKeys(value, inherited) {
-        var isArr = isArray2(value), isArg = !isArr && isArguments(value), isBuff = !isArr && !isArg && isBuffer(value), isType = !isArr && !isArg && !isBuff && isTypedArray(value), skipIndexes = isArr || isArg || isBuff || isType, result2 = skipIndexes ? baseTimes(value.length, String) : [], length = result2.length;
-        for (var key in value) {
-          if ((inherited || hasOwnProperty9.call(value, key)) && !(skipIndexes && // Safari 9 has enumerable `arguments.length` in strict mode.
-          (key == "length" || // Node.js 0.10 has enumerable non-index properties on buffers.
-          isBuff && (key == "offset" || key == "parent") || // PhantomJS 2 has enumerable non-index properties on typed arrays.
-          isType && (key == "buffer" || key == "byteLength" || key == "byteOffset") || // Skip index properties.
-          isIndex(key, length)))) {
-            result2.push(key);
-          }
-        }
-        return result2;
-      }
-      module2.exports = arrayLikeKeys;
-    }
-  });
-
-  // node_modules/lodash/_isPrototype.js
-  var require_isPrototype = __commonJS({
-    "node_modules/lodash/_isPrototype.js"(exports, module2) {
-      var objectProto = Object.prototype;
-      function isPrototype(value) {
-        var Ctor = value && value.constructor, proto = typeof Ctor == "function" && Ctor.prototype || objectProto;
-        return value === proto;
-      }
-      module2.exports = isPrototype;
-    }
-  });
-
-  // node_modules/lodash/_overArg.js
-  var require_overArg = __commonJS({
-    "node_modules/lodash/_overArg.js"(exports, module2) {
-      function overArg(func, transform2) {
-        return function(arg) {
-          return func(transform2(arg));
-        };
-      }
-      module2.exports = overArg;
-    }
-  });
-
-  // node_modules/lodash/_nativeKeys.js
-  var require_nativeKeys = __commonJS({
-    "node_modules/lodash/_nativeKeys.js"(exports, module2) {
-      var overArg = require_overArg();
-      var nativeKeys = overArg(Object.keys, Object);
-      module2.exports = nativeKeys;
-    }
-  });
-
-  // node_modules/lodash/_baseKeys.js
-  var require_baseKeys = __commonJS({
-    "node_modules/lodash/_baseKeys.js"(exports, module2) {
-      var isPrototype = require_isPrototype();
-      var nativeKeys = require_nativeKeys();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function baseKeys(object) {
-        if (!isPrototype(object)) {
-          return nativeKeys(object);
-        }
-        var result2 = [];
-        for (var key in Object(object)) {
-          if (hasOwnProperty9.call(object, key) && key != "constructor") {
-            result2.push(key);
-          }
-        }
-        return result2;
-      }
-      module2.exports = baseKeys;
-    }
-  });
-
-  // node_modules/lodash/isArrayLike.js
-  var require_isArrayLike = __commonJS({
-    "node_modules/lodash/isArrayLike.js"(exports, module2) {
-      var isFunction3 = require_isFunction();
-      var isLength = require_isLength();
-      function isArrayLike(value) {
-        return value != null && isLength(value.length) && !isFunction3(value);
-      }
-      module2.exports = isArrayLike;
-    }
-  });
-
-  // node_modules/lodash/keys.js
-  var require_keys = __commonJS({
-    "node_modules/lodash/keys.js"(exports, module2) {
-      var arrayLikeKeys = require_arrayLikeKeys();
-      var baseKeys = require_baseKeys();
-      var isArrayLike = require_isArrayLike();
-      function keys(object) {
-        return isArrayLike(object) ? arrayLikeKeys(object) : baseKeys(object);
-      }
-      module2.exports = keys;
-    }
-  });
-
-  // node_modules/lodash/_baseForOwn.js
-  var require_baseForOwn = __commonJS({
-    "node_modules/lodash/_baseForOwn.js"(exports, module2) {
-      var baseFor = require_baseFor();
-      var keys = require_keys();
-      function baseForOwn(object, iteratee) {
-        return object && baseFor(object, iteratee, keys);
-      }
-      module2.exports = baseForOwn;
-    }
-  });
-
   // node_modules/lodash/_baseInverter.js
   var require_baseInverter = __commonJS({
     "node_modules/lodash/_baseInverter.js"(exports, module2) {
@@ -32260,16 +40465,6 @@ spurious results.`);
         };
       }
       module2.exports = createInverter;
-    }
-  });
-
-  // node_modules/lodash/identity.js
-  var require_identity = __commonJS({
-    "node_modules/lodash/identity.js"(exports, module2) {
-      function identity3(value) {
-        return value;
-      }
-      module2.exports = identity3;
     }
   });
 
@@ -32361,7 +40556,7 @@ spurious results.`);
   });
 
   // node_modules/reselect/lib/index.js
-  var require_lib = __commonJS({
+  var require_lib3 = __commonJS({
     "node_modules/reselect/lib/index.js"(exports) {
       "use strict";
       exports.__esModule = true;
@@ -32519,8 +40714,8 @@ spurious results.`);
       isPosInt = (n) => n && n === Math.floor(n) && n > 0 && isFinite(n);
       getUintArray = (max) => !isPosInt(max) ? null : max <= Math.pow(2, 8) ? Uint8Array : max <= Math.pow(2, 16) ? Uint16Array : max <= Math.pow(2, 32) ? Uint32Array : max <= Number.MAX_SAFE_INTEGER ? ZeroArray : null;
       ZeroArray = class extends Array {
-        constructor(size) {
-          super(size);
+        constructor(size2) {
+          super(size2);
           this.fill(0);
         }
       };
@@ -32899,27 +41094,27 @@ spurious results.`);
             this.#calculatedSize -= sizes[index];
             sizes[index] = 0;
           };
-          this.#requireSize = (k, v, size, sizeCalculation) => {
+          this.#requireSize = (k, v, size2, sizeCalculation) => {
             if (this.#isBackgroundFetch(v)) {
               return 0;
             }
-            if (!isPosInt(size)) {
+            if (!isPosInt(size2)) {
               if (sizeCalculation) {
                 if (typeof sizeCalculation !== "function") {
                   throw new TypeError("sizeCalculation must be a function");
                 }
-                size = sizeCalculation(v, k);
-                if (!isPosInt(size)) {
+                size2 = sizeCalculation(v, k);
+                if (!isPosInt(size2)) {
                   throw new TypeError("sizeCalculation return invalid (expect positive integer)");
                 }
               } else {
                 throw new TypeError("invalid size value (must be positive integer). When maxSize or maxEntrySize is used, sizeCalculation or size must be set.");
               }
             }
-            return size;
+            return size2;
           };
-          this.#addItemSize = (index, size, status) => {
-            sizes[index] = size;
+          this.#addItemSize = (index, size2, status) => {
+            sizes[index] = size2;
             if (this.#maxSize) {
               const maxSize = this.#maxSize - sizes[index];
               while (this.#calculatedSize > maxSize) {
@@ -32928,7 +41123,7 @@ spurious results.`);
             }
             this.#calculatedSize += sizes[index];
             if (status) {
-              status.entrySize = size;
+              status.entrySize = size2;
               status.totalCalculatedSize = this.#calculatedSize;
             }
           };
@@ -32937,8 +41132,8 @@ spurious results.`);
         };
         #addItemSize = (_i, _s, _st) => {
         };
-        #requireSize = (_k, _v, size, sizeCalculation) => {
-          if (size || sizeCalculation) {
+        #requireSize = (_k, _v, size2, sizeCalculation) => {
+          if (size2 || sizeCalculation) {
             throw new TypeError("cannot set size without setting maxSize or maxEntrySize on cache");
           }
           return 0;
@@ -33207,8 +41402,8 @@ spurious results.`);
           }
           const { ttl = this.ttl, start, noDisposeOnSet = this.noDisposeOnSet, sizeCalculation = this.sizeCalculation, status } = setOptions;
           let { noUpdateTTL = this.noUpdateTTL } = setOptions;
-          const size = this.#requireSize(k, v, setOptions.size || 0, sizeCalculation);
-          if (this.maxEntrySize && size > this.maxEntrySize) {
+          const size2 = this.#requireSize(k, v, setOptions.size || 0, sizeCalculation);
+          if (this.maxEntrySize && size2 > this.maxEntrySize) {
             if (status) {
               status.set = "miss";
               status.maxEntrySizeExceeded = true;
@@ -33226,7 +41421,7 @@ spurious results.`);
             this.#prev[index] = this.#tail;
             this.#tail = index;
             this.#size++;
-            this.#addItemSize(index, size, status);
+            this.#addItemSize(index, size2, status);
             if (status)
               status.set = "add";
             noUpdateTTL = false;
@@ -33254,7 +41449,7 @@ spurious results.`);
                 }
               }
               this.#removeItemSize(index);
-              this.#addItemSize(index, size, status);
+              this.#addItemSize(index, size2, status);
               this.#valList[index] = v;
               if (status) {
                 status.set = "replace";
@@ -33514,7 +41709,7 @@ spurious results.`);
             // set options
             ttl = this.ttl,
             noDisposeOnSet = this.noDisposeOnSet,
-            size = 0,
+            size: size2 = 0,
             sizeCalculation = this.sizeCalculation,
             noUpdateTTL = this.noUpdateTTL,
             // fetch exclusive options
@@ -33543,7 +41738,7 @@ spurious results.`);
             noDeleteOnStaleGet,
             ttl,
             noDisposeOnSet,
-            size,
+            size: size2,
             sizeCalculation,
             noUpdateTTL,
             noDeleteOnFetchRejection,
@@ -33798,7 +41993,7 @@ spurious results.`);
   var init_memo = __esm({
     "packages/utilities/memo/index.ts"() {
       "use strict";
-      import_reselect = __toESM(require_lib());
+      import_reselect = __toESM(require_lib3());
       init_esm();
       import_isBoolean = __toESM(require_isBoolean());
       import_isFunction = __toESM(require_isFunction());
@@ -34066,42 +42261,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_defineProperty.js
-  var require_defineProperty = __commonJS({
-    "node_modules/lodash/_defineProperty.js"(exports, module2) {
-      var getNative = require_getNative();
-      var defineProperty = function() {
-        try {
-          var func = getNative(Object, "defineProperty");
-          func({}, "", {});
-          return func;
-        } catch (e) {
-        }
-      }();
-      module2.exports = defineProperty;
-    }
-  });
-
-  // node_modules/lodash/_baseAssignValue.js
-  var require_baseAssignValue = __commonJS({
-    "node_modules/lodash/_baseAssignValue.js"(exports, module2) {
-      var defineProperty = require_defineProperty();
-      function baseAssignValue(object, key, value) {
-        if (key == "__proto__" && defineProperty) {
-          defineProperty(object, key, {
-            "configurable": true,
-            "enumerable": true,
-            "value": value,
-            "writable": true
-          });
-        } else {
-          object[key] = value;
-        }
-      }
-      module2.exports = baseAssignValue;
-    }
-  });
-
   // node_modules/lodash/_arrayAggregator.js
   var require_arrayAggregator = __commonJS({
     "node_modules/lodash/_arrayAggregator.js"(exports, module2) {
@@ -34117,41 +42276,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_createBaseEach.js
-  var require_createBaseEach = __commonJS({
-    "node_modules/lodash/_createBaseEach.js"(exports, module2) {
-      var isArrayLike = require_isArrayLike();
-      function createBaseEach(eachFunc, fromRight) {
-        return function(collection, iteratee) {
-          if (collection == null) {
-            return collection;
-          }
-          if (!isArrayLike(collection)) {
-            return eachFunc(collection, iteratee);
-          }
-          var length = collection.length, index = fromRight ? length : -1, iterable = Object(collection);
-          while (fromRight ? index-- : ++index < length) {
-            if (iteratee(iterable[index], index, iterable) === false) {
-              break;
-            }
-          }
-          return collection;
-        };
-      }
-      module2.exports = createBaseEach;
-    }
-  });
-
-  // node_modules/lodash/_baseEach.js
-  var require_baseEach = __commonJS({
-    "node_modules/lodash/_baseEach.js"(exports, module2) {
-      var baseForOwn = require_baseForOwn();
-      var createBaseEach = require_createBaseEach();
-      var baseEach = createBaseEach(baseForOwn);
-      module2.exports = baseEach;
-    }
-  });
-
   // node_modules/lodash/_baseAggregator.js
   var require_baseAggregator = __commonJS({
     "node_modules/lodash/_baseAggregator.js"(exports, module2) {
@@ -34163,871 +42287,6 @@ spurious results.`);
         return accumulator;
       }
       module2.exports = baseAggregator;
-    }
-  });
-
-  // node_modules/lodash/_stackClear.js
-  var require_stackClear = __commonJS({
-    "node_modules/lodash/_stackClear.js"(exports, module2) {
-      var ListCache = require_ListCache();
-      function stackClear() {
-        this.__data__ = new ListCache();
-        this.size = 0;
-      }
-      module2.exports = stackClear;
-    }
-  });
-
-  // node_modules/lodash/_stackDelete.js
-  var require_stackDelete = __commonJS({
-    "node_modules/lodash/_stackDelete.js"(exports, module2) {
-      function stackDelete(key) {
-        var data = this.__data__, result2 = data["delete"](key);
-        this.size = data.size;
-        return result2;
-      }
-      module2.exports = stackDelete;
-    }
-  });
-
-  // node_modules/lodash/_stackGet.js
-  var require_stackGet = __commonJS({
-    "node_modules/lodash/_stackGet.js"(exports, module2) {
-      function stackGet(key) {
-        return this.__data__.get(key);
-      }
-      module2.exports = stackGet;
-    }
-  });
-
-  // node_modules/lodash/_stackHas.js
-  var require_stackHas = __commonJS({
-    "node_modules/lodash/_stackHas.js"(exports, module2) {
-      function stackHas(key) {
-        return this.__data__.has(key);
-      }
-      module2.exports = stackHas;
-    }
-  });
-
-  // node_modules/lodash/_stackSet.js
-  var require_stackSet = __commonJS({
-    "node_modules/lodash/_stackSet.js"(exports, module2) {
-      var ListCache = require_ListCache();
-      var Map2 = require_Map();
-      var MapCache = require_MapCache();
-      var LARGE_ARRAY_SIZE = 200;
-      function stackSet(key, value) {
-        var data = this.__data__;
-        if (data instanceof ListCache) {
-          var pairs = data.__data__;
-          if (!Map2 || pairs.length < LARGE_ARRAY_SIZE - 1) {
-            pairs.push([key, value]);
-            this.size = ++data.size;
-            return this;
-          }
-          data = this.__data__ = new MapCache(pairs);
-        }
-        data.set(key, value);
-        this.size = data.size;
-        return this;
-      }
-      module2.exports = stackSet;
-    }
-  });
-
-  // node_modules/lodash/_Stack.js
-  var require_Stack = __commonJS({
-    "node_modules/lodash/_Stack.js"(exports, module2) {
-      var ListCache = require_ListCache();
-      var stackClear = require_stackClear();
-      var stackDelete = require_stackDelete();
-      var stackGet = require_stackGet();
-      var stackHas = require_stackHas();
-      var stackSet = require_stackSet();
-      function Stack2(entries) {
-        var data = this.__data__ = new ListCache(entries);
-        this.size = data.size;
-      }
-      Stack2.prototype.clear = stackClear;
-      Stack2.prototype["delete"] = stackDelete;
-      Stack2.prototype.get = stackGet;
-      Stack2.prototype.has = stackHas;
-      Stack2.prototype.set = stackSet;
-      module2.exports = Stack2;
-    }
-  });
-
-  // node_modules/lodash/_setCacheAdd.js
-  var require_setCacheAdd = __commonJS({
-    "node_modules/lodash/_setCacheAdd.js"(exports, module2) {
-      var HASH_UNDEFINED = "__lodash_hash_undefined__";
-      function setCacheAdd(value) {
-        this.__data__.set(value, HASH_UNDEFINED);
-        return this;
-      }
-      module2.exports = setCacheAdd;
-    }
-  });
-
-  // node_modules/lodash/_setCacheHas.js
-  var require_setCacheHas = __commonJS({
-    "node_modules/lodash/_setCacheHas.js"(exports, module2) {
-      function setCacheHas(value) {
-        return this.__data__.has(value);
-      }
-      module2.exports = setCacheHas;
-    }
-  });
-
-  // node_modules/lodash/_SetCache.js
-  var require_SetCache = __commonJS({
-    "node_modules/lodash/_SetCache.js"(exports, module2) {
-      var MapCache = require_MapCache();
-      var setCacheAdd = require_setCacheAdd();
-      var setCacheHas = require_setCacheHas();
-      function SetCache(values2) {
-        var index = -1, length = values2 == null ? 0 : values2.length;
-        this.__data__ = new MapCache();
-        while (++index < length) {
-          this.add(values2[index]);
-        }
-      }
-      SetCache.prototype.add = SetCache.prototype.push = setCacheAdd;
-      SetCache.prototype.has = setCacheHas;
-      module2.exports = SetCache;
-    }
-  });
-
-  // node_modules/lodash/_arraySome.js
-  var require_arraySome = __commonJS({
-    "node_modules/lodash/_arraySome.js"(exports, module2) {
-      function arraySome(array, predicate) {
-        var index = -1, length = array == null ? 0 : array.length;
-        while (++index < length) {
-          if (predicate(array[index], index, array)) {
-            return true;
-          }
-        }
-        return false;
-      }
-      module2.exports = arraySome;
-    }
-  });
-
-  // node_modules/lodash/_cacheHas.js
-  var require_cacheHas = __commonJS({
-    "node_modules/lodash/_cacheHas.js"(exports, module2) {
-      function cacheHas(cache, key) {
-        return cache.has(key);
-      }
-      module2.exports = cacheHas;
-    }
-  });
-
-  // node_modules/lodash/_equalArrays.js
-  var require_equalArrays = __commonJS({
-    "node_modules/lodash/_equalArrays.js"(exports, module2) {
-      var SetCache = require_SetCache();
-      var arraySome = require_arraySome();
-      var cacheHas = require_cacheHas();
-      var COMPARE_PARTIAL_FLAG = 1;
-      var COMPARE_UNORDERED_FLAG = 2;
-      function equalArrays(array, other, bitmask, customizer, equalFunc, stack) {
-        var isPartial = bitmask & COMPARE_PARTIAL_FLAG, arrLength = array.length, othLength = other.length;
-        if (arrLength != othLength && !(isPartial && othLength > arrLength)) {
-          return false;
-        }
-        var arrStacked = stack.get(array);
-        var othStacked = stack.get(other);
-        if (arrStacked && othStacked) {
-          return arrStacked == other && othStacked == array;
-        }
-        var index = -1, result2 = true, seen = bitmask & COMPARE_UNORDERED_FLAG ? new SetCache() : void 0;
-        stack.set(array, other);
-        stack.set(other, array);
-        while (++index < arrLength) {
-          var arrValue = array[index], othValue = other[index];
-          if (customizer) {
-            var compared = isPartial ? customizer(othValue, arrValue, index, other, array, stack) : customizer(arrValue, othValue, index, array, other, stack);
-          }
-          if (compared !== void 0) {
-            if (compared) {
-              continue;
-            }
-            result2 = false;
-            break;
-          }
-          if (seen) {
-            if (!arraySome(other, function(othValue2, othIndex) {
-              if (!cacheHas(seen, othIndex) && (arrValue === othValue2 || equalFunc(arrValue, othValue2, bitmask, customizer, stack))) {
-                return seen.push(othIndex);
-              }
-            })) {
-              result2 = false;
-              break;
-            }
-          } else if (!(arrValue === othValue || equalFunc(arrValue, othValue, bitmask, customizer, stack))) {
-            result2 = false;
-            break;
-          }
-        }
-        stack["delete"](array);
-        stack["delete"](other);
-        return result2;
-      }
-      module2.exports = equalArrays;
-    }
-  });
-
-  // node_modules/lodash/_Uint8Array.js
-  var require_Uint8Array = __commonJS({
-    "node_modules/lodash/_Uint8Array.js"(exports, module2) {
-      var root2 = require_root();
-      var Uint8Array2 = root2.Uint8Array;
-      module2.exports = Uint8Array2;
-    }
-  });
-
-  // node_modules/lodash/_mapToArray.js
-  var require_mapToArray = __commonJS({
-    "node_modules/lodash/_mapToArray.js"(exports, module2) {
-      function mapToArray(map) {
-        var index = -1, result2 = Array(map.size);
-        map.forEach(function(value, key) {
-          result2[++index] = [key, value];
-        });
-        return result2;
-      }
-      module2.exports = mapToArray;
-    }
-  });
-
-  // node_modules/lodash/_setToArray.js
-  var require_setToArray = __commonJS({
-    "node_modules/lodash/_setToArray.js"(exports, module2) {
-      function setToArray(set) {
-        var index = -1, result2 = Array(set.size);
-        set.forEach(function(value) {
-          result2[++index] = value;
-        });
-        return result2;
-      }
-      module2.exports = setToArray;
-    }
-  });
-
-  // node_modules/lodash/_equalByTag.js
-  var require_equalByTag = __commonJS({
-    "node_modules/lodash/_equalByTag.js"(exports, module2) {
-      var Symbol2 = require_Symbol();
-      var Uint8Array2 = require_Uint8Array();
-      var eq = require_eq();
-      var equalArrays = require_equalArrays();
-      var mapToArray = require_mapToArray();
-      var setToArray = require_setToArray();
-      var COMPARE_PARTIAL_FLAG = 1;
-      var COMPARE_UNORDERED_FLAG = 2;
-      var boolTag = "[object Boolean]";
-      var dateTag = "[object Date]";
-      var errorTag = "[object Error]";
-      var mapTag = "[object Map]";
-      var numberTag = "[object Number]";
-      var regexpTag = "[object RegExp]";
-      var setTag = "[object Set]";
-      var stringTag = "[object String]";
-      var symbolTag = "[object Symbol]";
-      var arrayBufferTag = "[object ArrayBuffer]";
-      var dataViewTag = "[object DataView]";
-      var symbolProto = Symbol2 ? Symbol2.prototype : void 0;
-      var symbolValueOf = symbolProto ? symbolProto.valueOf : void 0;
-      function equalByTag(object, other, tag, bitmask, customizer, equalFunc, stack) {
-        switch (tag) {
-          case dataViewTag:
-            if (object.byteLength != other.byteLength || object.byteOffset != other.byteOffset) {
-              return false;
-            }
-            object = object.buffer;
-            other = other.buffer;
-          case arrayBufferTag:
-            if (object.byteLength != other.byteLength || !equalFunc(new Uint8Array2(object), new Uint8Array2(other))) {
-              return false;
-            }
-            return true;
-          case boolTag:
-          case dateTag:
-          case numberTag:
-            return eq(+object, +other);
-          case errorTag:
-            return object.name == other.name && object.message == other.message;
-          case regexpTag:
-          case stringTag:
-            return object == other + "";
-          case mapTag:
-            var convert = mapToArray;
-          case setTag:
-            var isPartial = bitmask & COMPARE_PARTIAL_FLAG;
-            convert || (convert = setToArray);
-            if (object.size != other.size && !isPartial) {
-              return false;
-            }
-            var stacked = stack.get(object);
-            if (stacked) {
-              return stacked == other;
-            }
-            bitmask |= COMPARE_UNORDERED_FLAG;
-            stack.set(object, other);
-            var result2 = equalArrays(convert(object), convert(other), bitmask, customizer, equalFunc, stack);
-            stack["delete"](object);
-            return result2;
-          case symbolTag:
-            if (symbolValueOf) {
-              return symbolValueOf.call(object) == symbolValueOf.call(other);
-            }
-        }
-        return false;
-      }
-      module2.exports = equalByTag;
-    }
-  });
-
-  // node_modules/lodash/_arrayPush.js
-  var require_arrayPush = __commonJS({
-    "node_modules/lodash/_arrayPush.js"(exports, module2) {
-      function arrayPush(array, values2) {
-        var index = -1, length = values2.length, offset = array.length;
-        while (++index < length) {
-          array[offset + index] = values2[index];
-        }
-        return array;
-      }
-      module2.exports = arrayPush;
-    }
-  });
-
-  // node_modules/lodash/_baseGetAllKeys.js
-  var require_baseGetAllKeys = __commonJS({
-    "node_modules/lodash/_baseGetAllKeys.js"(exports, module2) {
-      var arrayPush = require_arrayPush();
-      var isArray2 = require_isArray();
-      function baseGetAllKeys(object, keysFunc, symbolsFunc) {
-        var result2 = keysFunc(object);
-        return isArray2(object) ? result2 : arrayPush(result2, symbolsFunc(object));
-      }
-      module2.exports = baseGetAllKeys;
-    }
-  });
-
-  // node_modules/lodash/_arrayFilter.js
-  var require_arrayFilter = __commonJS({
-    "node_modules/lodash/_arrayFilter.js"(exports, module2) {
-      function arrayFilter(array, predicate) {
-        var index = -1, length = array == null ? 0 : array.length, resIndex = 0, result2 = [];
-        while (++index < length) {
-          var value = array[index];
-          if (predicate(value, index, array)) {
-            result2[resIndex++] = value;
-          }
-        }
-        return result2;
-      }
-      module2.exports = arrayFilter;
-    }
-  });
-
-  // node_modules/lodash/stubArray.js
-  var require_stubArray = __commonJS({
-    "node_modules/lodash/stubArray.js"(exports, module2) {
-      function stubArray() {
-        return [];
-      }
-      module2.exports = stubArray;
-    }
-  });
-
-  // node_modules/lodash/_getSymbols.js
-  var require_getSymbols = __commonJS({
-    "node_modules/lodash/_getSymbols.js"(exports, module2) {
-      var arrayFilter = require_arrayFilter();
-      var stubArray = require_stubArray();
-      var objectProto = Object.prototype;
-      var propertyIsEnumerable = objectProto.propertyIsEnumerable;
-      var nativeGetSymbols = Object.getOwnPropertySymbols;
-      var getSymbols = !nativeGetSymbols ? stubArray : function(object) {
-        if (object == null) {
-          return [];
-        }
-        object = Object(object);
-        return arrayFilter(nativeGetSymbols(object), function(symbol) {
-          return propertyIsEnumerable.call(object, symbol);
-        });
-      };
-      module2.exports = getSymbols;
-    }
-  });
-
-  // node_modules/lodash/_getAllKeys.js
-  var require_getAllKeys = __commonJS({
-    "node_modules/lodash/_getAllKeys.js"(exports, module2) {
-      var baseGetAllKeys = require_baseGetAllKeys();
-      var getSymbols = require_getSymbols();
-      var keys = require_keys();
-      function getAllKeys(object) {
-        return baseGetAllKeys(object, keys, getSymbols);
-      }
-      module2.exports = getAllKeys;
-    }
-  });
-
-  // node_modules/lodash/_equalObjects.js
-  var require_equalObjects = __commonJS({
-    "node_modules/lodash/_equalObjects.js"(exports, module2) {
-      var getAllKeys = require_getAllKeys();
-      var COMPARE_PARTIAL_FLAG = 1;
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function equalObjects(object, other, bitmask, customizer, equalFunc, stack) {
-        var isPartial = bitmask & COMPARE_PARTIAL_FLAG, objProps = getAllKeys(object), objLength = objProps.length, othProps = getAllKeys(other), othLength = othProps.length;
-        if (objLength != othLength && !isPartial) {
-          return false;
-        }
-        var index = objLength;
-        while (index--) {
-          var key = objProps[index];
-          if (!(isPartial ? key in other : hasOwnProperty9.call(other, key))) {
-            return false;
-          }
-        }
-        var objStacked = stack.get(object);
-        var othStacked = stack.get(other);
-        if (objStacked && othStacked) {
-          return objStacked == other && othStacked == object;
-        }
-        var result2 = true;
-        stack.set(object, other);
-        stack.set(other, object);
-        var skipCtor = isPartial;
-        while (++index < objLength) {
-          key = objProps[index];
-          var objValue = object[key], othValue = other[key];
-          if (customizer) {
-            var compared = isPartial ? customizer(othValue, objValue, key, other, object, stack) : customizer(objValue, othValue, key, object, other, stack);
-          }
-          if (!(compared === void 0 ? objValue === othValue || equalFunc(objValue, othValue, bitmask, customizer, stack) : compared)) {
-            result2 = false;
-            break;
-          }
-          skipCtor || (skipCtor = key == "constructor");
-        }
-        if (result2 && !skipCtor) {
-          var objCtor = object.constructor, othCtor = other.constructor;
-          if (objCtor != othCtor && ("constructor" in object && "constructor" in other) && !(typeof objCtor == "function" && objCtor instanceof objCtor && typeof othCtor == "function" && othCtor instanceof othCtor)) {
-            result2 = false;
-          }
-        }
-        stack["delete"](object);
-        stack["delete"](other);
-        return result2;
-      }
-      module2.exports = equalObjects;
-    }
-  });
-
-  // node_modules/lodash/_DataView.js
-  var require_DataView = __commonJS({
-    "node_modules/lodash/_DataView.js"(exports, module2) {
-      var getNative = require_getNative();
-      var root2 = require_root();
-      var DataView = getNative(root2, "DataView");
-      module2.exports = DataView;
-    }
-  });
-
-  // node_modules/lodash/_Promise.js
-  var require_Promise = __commonJS({
-    "node_modules/lodash/_Promise.js"(exports, module2) {
-      var getNative = require_getNative();
-      var root2 = require_root();
-      var Promise3 = getNative(root2, "Promise");
-      module2.exports = Promise3;
-    }
-  });
-
-  // node_modules/lodash/_Set.js
-  var require_Set = __commonJS({
-    "node_modules/lodash/_Set.js"(exports, module2) {
-      var getNative = require_getNative();
-      var root2 = require_root();
-      var Set2 = getNative(root2, "Set");
-      module2.exports = Set2;
-    }
-  });
-
-  // node_modules/lodash/_WeakMap.js
-  var require_WeakMap = __commonJS({
-    "node_modules/lodash/_WeakMap.js"(exports, module2) {
-      var getNative = require_getNative();
-      var root2 = require_root();
-      var WeakMap2 = getNative(root2, "WeakMap");
-      module2.exports = WeakMap2;
-    }
-  });
-
-  // node_modules/lodash/_getTag.js
-  var require_getTag = __commonJS({
-    "node_modules/lodash/_getTag.js"(exports, module2) {
-      var DataView = require_DataView();
-      var Map2 = require_Map();
-      var Promise3 = require_Promise();
-      var Set2 = require_Set();
-      var WeakMap2 = require_WeakMap();
-      var baseGetTag = require_baseGetTag();
-      var toSource = require_toSource();
-      var mapTag = "[object Map]";
-      var objectTag = "[object Object]";
-      var promiseTag = "[object Promise]";
-      var setTag = "[object Set]";
-      var weakMapTag = "[object WeakMap]";
-      var dataViewTag = "[object DataView]";
-      var dataViewCtorString = toSource(DataView);
-      var mapCtorString = toSource(Map2);
-      var promiseCtorString = toSource(Promise3);
-      var setCtorString = toSource(Set2);
-      var weakMapCtorString = toSource(WeakMap2);
-      var getTag = baseGetTag;
-      if (DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag || Map2 && getTag(new Map2()) != mapTag || Promise3 && getTag(Promise3.resolve()) != promiseTag || Set2 && getTag(new Set2()) != setTag || WeakMap2 && getTag(new WeakMap2()) != weakMapTag) {
-        getTag = function(value) {
-          var result2 = baseGetTag(value), Ctor = result2 == objectTag ? value.constructor : void 0, ctorString = Ctor ? toSource(Ctor) : "";
-          if (ctorString) {
-            switch (ctorString) {
-              case dataViewCtorString:
-                return dataViewTag;
-              case mapCtorString:
-                return mapTag;
-              case promiseCtorString:
-                return promiseTag;
-              case setCtorString:
-                return setTag;
-              case weakMapCtorString:
-                return weakMapTag;
-            }
-          }
-          return result2;
-        };
-      }
-      module2.exports = getTag;
-    }
-  });
-
-  // node_modules/lodash/_baseIsEqualDeep.js
-  var require_baseIsEqualDeep = __commonJS({
-    "node_modules/lodash/_baseIsEqualDeep.js"(exports, module2) {
-      var Stack2 = require_Stack();
-      var equalArrays = require_equalArrays();
-      var equalByTag = require_equalByTag();
-      var equalObjects = require_equalObjects();
-      var getTag = require_getTag();
-      var isArray2 = require_isArray();
-      var isBuffer = require_isBuffer();
-      var isTypedArray = require_isTypedArray();
-      var COMPARE_PARTIAL_FLAG = 1;
-      var argsTag = "[object Arguments]";
-      var arrayTag = "[object Array]";
-      var objectTag = "[object Object]";
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function baseIsEqualDeep(object, other, bitmask, customizer, equalFunc, stack) {
-        var objIsArr = isArray2(object), othIsArr = isArray2(other), objTag = objIsArr ? arrayTag : getTag(object), othTag = othIsArr ? arrayTag : getTag(other);
-        objTag = objTag == argsTag ? objectTag : objTag;
-        othTag = othTag == argsTag ? objectTag : othTag;
-        var objIsObj = objTag == objectTag, othIsObj = othTag == objectTag, isSameTag = objTag == othTag;
-        if (isSameTag && isBuffer(object)) {
-          if (!isBuffer(other)) {
-            return false;
-          }
-          objIsArr = true;
-          objIsObj = false;
-        }
-        if (isSameTag && !objIsObj) {
-          stack || (stack = new Stack2());
-          return objIsArr || isTypedArray(object) ? equalArrays(object, other, bitmask, customizer, equalFunc, stack) : equalByTag(object, other, objTag, bitmask, customizer, equalFunc, stack);
-        }
-        if (!(bitmask & COMPARE_PARTIAL_FLAG)) {
-          var objIsWrapped = objIsObj && hasOwnProperty9.call(object, "__wrapped__"), othIsWrapped = othIsObj && hasOwnProperty9.call(other, "__wrapped__");
-          if (objIsWrapped || othIsWrapped) {
-            var objUnwrapped = objIsWrapped ? object.value() : object, othUnwrapped = othIsWrapped ? other.value() : other;
-            stack || (stack = new Stack2());
-            return equalFunc(objUnwrapped, othUnwrapped, bitmask, customizer, stack);
-          }
-        }
-        if (!isSameTag) {
-          return false;
-        }
-        stack || (stack = new Stack2());
-        return equalObjects(object, other, bitmask, customizer, equalFunc, stack);
-      }
-      module2.exports = baseIsEqualDeep;
-    }
-  });
-
-  // node_modules/lodash/_baseIsEqual.js
-  var require_baseIsEqual = __commonJS({
-    "node_modules/lodash/_baseIsEqual.js"(exports, module2) {
-      var baseIsEqualDeep = require_baseIsEqualDeep();
-      var isObjectLike2 = require_isObjectLike();
-      function baseIsEqual(value, other, bitmask, customizer, stack) {
-        if (value === other) {
-          return true;
-        }
-        if (value == null || other == null || !isObjectLike2(value) && !isObjectLike2(other)) {
-          return value !== value && other !== other;
-        }
-        return baseIsEqualDeep(value, other, bitmask, customizer, baseIsEqual, stack);
-      }
-      module2.exports = baseIsEqual;
-    }
-  });
-
-  // node_modules/lodash/_baseIsMatch.js
-  var require_baseIsMatch = __commonJS({
-    "node_modules/lodash/_baseIsMatch.js"(exports, module2) {
-      var Stack2 = require_Stack();
-      var baseIsEqual = require_baseIsEqual();
-      var COMPARE_PARTIAL_FLAG = 1;
-      var COMPARE_UNORDERED_FLAG = 2;
-      function baseIsMatch(object, source, matchData, customizer) {
-        var index = matchData.length, length = index, noCustomizer = !customizer;
-        if (object == null) {
-          return !length;
-        }
-        object = Object(object);
-        while (index--) {
-          var data = matchData[index];
-          if (noCustomizer && data[2] ? data[1] !== object[data[0]] : !(data[0] in object)) {
-            return false;
-          }
-        }
-        while (++index < length) {
-          data = matchData[index];
-          var key = data[0], objValue = object[key], srcValue = data[1];
-          if (noCustomizer && data[2]) {
-            if (objValue === void 0 && !(key in object)) {
-              return false;
-            }
-          } else {
-            var stack = new Stack2();
-            if (customizer) {
-              var result2 = customizer(objValue, srcValue, key, object, source, stack);
-            }
-            if (!(result2 === void 0 ? baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG, customizer, stack) : result2)) {
-              return false;
-            }
-          }
-        }
-        return true;
-      }
-      module2.exports = baseIsMatch;
-    }
-  });
-
-  // node_modules/lodash/_isStrictComparable.js
-  var require_isStrictComparable = __commonJS({
-    "node_modules/lodash/_isStrictComparable.js"(exports, module2) {
-      var isObject2 = require_isObject();
-      function isStrictComparable(value) {
-        return value === value && !isObject2(value);
-      }
-      module2.exports = isStrictComparable;
-    }
-  });
-
-  // node_modules/lodash/_getMatchData.js
-  var require_getMatchData = __commonJS({
-    "node_modules/lodash/_getMatchData.js"(exports, module2) {
-      var isStrictComparable = require_isStrictComparable();
-      var keys = require_keys();
-      function getMatchData(object) {
-        var result2 = keys(object), length = result2.length;
-        while (length--) {
-          var key = result2[length], value = object[key];
-          result2[length] = [key, value, isStrictComparable(value)];
-        }
-        return result2;
-      }
-      module2.exports = getMatchData;
-    }
-  });
-
-  // node_modules/lodash/_matchesStrictComparable.js
-  var require_matchesStrictComparable = __commonJS({
-    "node_modules/lodash/_matchesStrictComparable.js"(exports, module2) {
-      function matchesStrictComparable(key, srcValue) {
-        return function(object) {
-          if (object == null) {
-            return false;
-          }
-          return object[key] === srcValue && (srcValue !== void 0 || key in Object(object));
-        };
-      }
-      module2.exports = matchesStrictComparable;
-    }
-  });
-
-  // node_modules/lodash/_baseMatches.js
-  var require_baseMatches = __commonJS({
-    "node_modules/lodash/_baseMatches.js"(exports, module2) {
-      var baseIsMatch = require_baseIsMatch();
-      var getMatchData = require_getMatchData();
-      var matchesStrictComparable = require_matchesStrictComparable();
-      function baseMatches(source) {
-        var matchData = getMatchData(source);
-        if (matchData.length == 1 && matchData[0][2]) {
-          return matchesStrictComparable(matchData[0][0], matchData[0][1]);
-        }
-        return function(object) {
-          return object === source || baseIsMatch(object, source, matchData);
-        };
-      }
-      module2.exports = baseMatches;
-    }
-  });
-
-  // node_modules/lodash/_baseHasIn.js
-  var require_baseHasIn = __commonJS({
-    "node_modules/lodash/_baseHasIn.js"(exports, module2) {
-      function baseHasIn(object, key) {
-        return object != null && key in Object(object);
-      }
-      module2.exports = baseHasIn;
-    }
-  });
-
-  // node_modules/lodash/_hasPath.js
-  var require_hasPath = __commonJS({
-    "node_modules/lodash/_hasPath.js"(exports, module2) {
-      var castPath = require_castPath();
-      var isArguments = require_isArguments();
-      var isArray2 = require_isArray();
-      var isIndex = require_isIndex();
-      var isLength = require_isLength();
-      var toKey = require_toKey();
-      function hasPath(object, path, hasFunc) {
-        path = castPath(path, object);
-        var index = -1, length = path.length, result2 = false;
-        while (++index < length) {
-          var key = toKey(path[index]);
-          if (!(result2 = object != null && hasFunc(object, key))) {
-            break;
-          }
-          object = object[key];
-        }
-        if (result2 || ++index != length) {
-          return result2;
-        }
-        length = object == null ? 0 : object.length;
-        return !!length && isLength(length) && isIndex(key, length) && (isArray2(object) || isArguments(object));
-      }
-      module2.exports = hasPath;
-    }
-  });
-
-  // node_modules/lodash/hasIn.js
-  var require_hasIn = __commonJS({
-    "node_modules/lodash/hasIn.js"(exports, module2) {
-      var baseHasIn = require_baseHasIn();
-      var hasPath = require_hasPath();
-      function hasIn(object, path) {
-        return object != null && hasPath(object, path, baseHasIn);
-      }
-      module2.exports = hasIn;
-    }
-  });
-
-  // node_modules/lodash/_baseMatchesProperty.js
-  var require_baseMatchesProperty = __commonJS({
-    "node_modules/lodash/_baseMatchesProperty.js"(exports, module2) {
-      var baseIsEqual = require_baseIsEqual();
-      var get6 = require_get();
-      var hasIn = require_hasIn();
-      var isKey = require_isKey();
-      var isStrictComparable = require_isStrictComparable();
-      var matchesStrictComparable = require_matchesStrictComparable();
-      var toKey = require_toKey();
-      var COMPARE_PARTIAL_FLAG = 1;
-      var COMPARE_UNORDERED_FLAG = 2;
-      function baseMatchesProperty(path, srcValue) {
-        if (isKey(path) && isStrictComparable(srcValue)) {
-          return matchesStrictComparable(toKey(path), srcValue);
-        }
-        return function(object) {
-          var objValue = get6(object, path);
-          return objValue === void 0 && objValue === srcValue ? hasIn(object, path) : baseIsEqual(srcValue, objValue, COMPARE_PARTIAL_FLAG | COMPARE_UNORDERED_FLAG);
-        };
-      }
-      module2.exports = baseMatchesProperty;
-    }
-  });
-
-  // node_modules/lodash/_baseProperty.js
-  var require_baseProperty = __commonJS({
-    "node_modules/lodash/_baseProperty.js"(exports, module2) {
-      function baseProperty(key) {
-        return function(object) {
-          return object == null ? void 0 : object[key];
-        };
-      }
-      module2.exports = baseProperty;
-    }
-  });
-
-  // node_modules/lodash/_basePropertyDeep.js
-  var require_basePropertyDeep = __commonJS({
-    "node_modules/lodash/_basePropertyDeep.js"(exports, module2) {
-      var baseGet = require_baseGet();
-      function basePropertyDeep(path) {
-        return function(object) {
-          return baseGet(object, path);
-        };
-      }
-      module2.exports = basePropertyDeep;
-    }
-  });
-
-  // node_modules/lodash/property.js
-  var require_property = __commonJS({
-    "node_modules/lodash/property.js"(exports, module2) {
-      var baseProperty = require_baseProperty();
-      var basePropertyDeep = require_basePropertyDeep();
-      var isKey = require_isKey();
-      var toKey = require_toKey();
-      function property(path) {
-        return isKey(path) ? baseProperty(toKey(path)) : basePropertyDeep(path);
-      }
-      module2.exports = property;
-    }
-  });
-
-  // node_modules/lodash/_baseIteratee.js
-  var require_baseIteratee = __commonJS({
-    "node_modules/lodash/_baseIteratee.js"(exports, module2) {
-      var baseMatches = require_baseMatches();
-      var baseMatchesProperty = require_baseMatchesProperty();
-      var identity3 = require_identity();
-      var isArray2 = require_isArray();
-      var property = require_property();
-      function baseIteratee(value) {
-        if (typeof value == "function") {
-          return value;
-        }
-        if (value == null) {
-          return identity3;
-        }
-        if (typeof value == "object") {
-          return isArray2(value) ? baseMatchesProperty(value[0], value[1]) : baseMatches(value);
-        }
-        return property(value);
-      }
-      module2.exports = baseIteratee;
     }
   });
 
@@ -35057,20 +42316,6 @@ spurious results.`);
         baseAssignValue(result2, key, value);
       });
       module2.exports = keyBy2;
-    }
-  });
-
-  // node_modules/lodash/isString.js
-  var require_isString = __commonJS({
-    "node_modules/lodash/isString.js"(exports, module2) {
-      var baseGetTag = require_baseGetTag();
-      var isArray2 = require_isArray();
-      var isObjectLike2 = require_isObjectLike();
-      var stringTag = "[object String]";
-      function isString2(value) {
-        return typeof value == "string" || !isArray2(value) && isObjectLike2(value) && baseGetTag(value) == stringTag;
-      }
-      module2.exports = isString2;
     }
   });
 
@@ -35183,98 +42428,6 @@ spurious results.`);
         const currencyInfo = typeof currency === "object" ? currency : getCurrencyInfo(currency);
         return intValue / Math.pow(10, currencyInfo.digits);
       };
-    }
-  });
-
-  // node_modules/lodash/_trimmedEndIndex.js
-  var require_trimmedEndIndex = __commonJS({
-    "node_modules/lodash/_trimmedEndIndex.js"(exports, module2) {
-      var reWhitespace = /\s/;
-      function trimmedEndIndex(string) {
-        var index = string.length;
-        while (index-- && reWhitespace.test(string.charAt(index))) {
-        }
-        return index;
-      }
-      module2.exports = trimmedEndIndex;
-    }
-  });
-
-  // node_modules/lodash/_baseTrim.js
-  var require_baseTrim = __commonJS({
-    "node_modules/lodash/_baseTrim.js"(exports, module2) {
-      var trimmedEndIndex = require_trimmedEndIndex();
-      var reTrimStart = /^\s+/;
-      function baseTrim(string) {
-        return string ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, "") : string;
-      }
-      module2.exports = baseTrim;
-    }
-  });
-
-  // node_modules/lodash/toNumber.js
-  var require_toNumber = __commonJS({
-    "node_modules/lodash/toNumber.js"(exports, module2) {
-      var baseTrim = require_baseTrim();
-      var isObject2 = require_isObject();
-      var isSymbol = require_isSymbol();
-      var NAN = 0 / 0;
-      var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
-      var reIsBinary = /^0b[01]+$/i;
-      var reIsOctal = /^0o[0-7]+$/i;
-      var freeParseInt = parseInt;
-      function toNumber(value) {
-        if (typeof value == "number") {
-          return value;
-        }
-        if (isSymbol(value)) {
-          return NAN;
-        }
-        if (isObject2(value)) {
-          var other = typeof value.valueOf == "function" ? value.valueOf() : value;
-          value = isObject2(other) ? other + "" : other;
-        }
-        if (typeof value != "string") {
-          return value === 0 ? value : +value;
-        }
-        value = baseTrim(value);
-        var isBinary = reIsBinary.test(value);
-        return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
-      }
-      module2.exports = toNumber;
-    }
-  });
-
-  // node_modules/lodash/toFinite.js
-  var require_toFinite = __commonJS({
-    "node_modules/lodash/toFinite.js"(exports, module2) {
-      var toNumber = require_toNumber();
-      var INFINITY = 1 / 0;
-      var MAX_INTEGER = 17976931348623157e292;
-      function toFinite(value) {
-        if (!value) {
-          return value === 0 ? value : 0;
-        }
-        value = toNumber(value);
-        if (value === INFINITY || value === -INFINITY) {
-          var sign = value < 0 ? -1 : 1;
-          return sign * MAX_INTEGER;
-        }
-        return value === value ? value : 0;
-      }
-      module2.exports = toFinite;
-    }
-  });
-
-  // node_modules/lodash/toInteger.js
-  var require_toInteger = __commonJS({
-    "node_modules/lodash/toInteger.js"(exports, module2) {
-      var toFinite = require_toFinite();
-      function toInteger(value) {
-        var result2 = toFinite(value), remainder = result2 % 1;
-        return result2 === result2 ? remainder ? result2 - remainder : result2 : 0;
-      }
-      module2.exports = toInteger;
     }
   });
 
@@ -35563,15 +42716,15 @@ spurious results.`);
     return replaceable.replace(getWfTokenPattern(), function(match) {
       const token = parseTokenJson(match) || {};
       const path = token.path.split(".");
-      return (0, import_isFunction2.default)(item.getIn) ? item.getIn(path, "") : (0, import_get.default)(item, path, "");
+      return (0, import_isFunction2.default)(item.getIn) ? item.getIn(path, "") : (0, import_get3.default)(item, path, "");
     });
   }
-  var import_isFunction2, import_get;
+  var import_isFunction2, import_get3;
   var init_simpleReplaceTokens = __esm({
     "packages/systems/core/utils/EmbedUtils/simpleReplaceTokens/index.ts"() {
       "use strict";
       import_isFunction2 = __toESM(require_isFunction());
-      import_get = __toESM(require_get());
+      import_get3 = __toESM(require_get());
       init_shared();
     }
   });
@@ -35614,11 +42767,11 @@ spurious results.`);
       }
     );
   }
-  var import_get2, import_isInteger, import_accounting, _nonBreakingSpace, _replaceAllSpaceWithNBSP;
+  var import_get4, import_isInteger, import_accounting, _nonBreakingSpace, _replaceAllSpaceWithNBSP;
   var init_renderPrice = __esm({
     "packages/systems/core/utils/CurrencyUtils/renderPrice.ts"() {
       "use strict";
-      import_get2 = __toESM(require_get());
+      import_get4 = __toESM(require_get());
       import_isInteger = __toESM(require_isInteger());
       import_accounting = __toESM(require_accounting());
       init_simpleReplaceTokens();
@@ -35654,120 +42807,6 @@ spurious results.`);
           }
         }
       };
-    }
-  });
-
-  // node_modules/lodash/_arrayEach.js
-  var require_arrayEach = __commonJS({
-    "node_modules/lodash/_arrayEach.js"(exports, module2) {
-      function arrayEach(array, iteratee) {
-        var index = -1, length = array == null ? 0 : array.length;
-        while (++index < length) {
-          if (iteratee(array[index], index, array) === false) {
-            break;
-          }
-        }
-        return array;
-      }
-      module2.exports = arrayEach;
-    }
-  });
-
-  // node_modules/lodash/_castFunction.js
-  var require_castFunction = __commonJS({
-    "node_modules/lodash/_castFunction.js"(exports, module2) {
-      var identity3 = require_identity();
-      function castFunction(value) {
-        return typeof value == "function" ? value : identity3;
-      }
-      module2.exports = castFunction;
-    }
-  });
-
-  // node_modules/lodash/forEach.js
-  var require_forEach = __commonJS({
-    "node_modules/lodash/forEach.js"(exports, module2) {
-      var arrayEach = require_arrayEach();
-      var baseEach = require_baseEach();
-      var castFunction = require_castFunction();
-      var isArray2 = require_isArray();
-      function forEach5(collection, iteratee) {
-        var func = isArray2(collection) ? arrayEach : baseEach;
-        return func(collection, castFunction(iteratee));
-      }
-      module2.exports = forEach5;
-    }
-  });
-
-  // node_modules/lodash/_createFind.js
-  var require_createFind = __commonJS({
-    "node_modules/lodash/_createFind.js"(exports, module2) {
-      var baseIteratee = require_baseIteratee();
-      var isArrayLike = require_isArrayLike();
-      var keys = require_keys();
-      function createFind(findIndexFunc) {
-        return function(collection, predicate, fromIndex) {
-          var iterable = Object(collection);
-          if (!isArrayLike(collection)) {
-            var iteratee = baseIteratee(predicate, 3);
-            collection = keys(collection);
-            predicate = function(key) {
-              return iteratee(iterable[key], key, iterable);
-            };
-          }
-          var index = findIndexFunc(collection, predicate, fromIndex);
-          return index > -1 ? iterable[iteratee ? collection[index] : index] : void 0;
-        };
-      }
-      module2.exports = createFind;
-    }
-  });
-
-  // node_modules/lodash/_baseFindIndex.js
-  var require_baseFindIndex = __commonJS({
-    "node_modules/lodash/_baseFindIndex.js"(exports, module2) {
-      function baseFindIndex(array, predicate, fromIndex, fromRight) {
-        var length = array.length, index = fromIndex + (fromRight ? 1 : -1);
-        while (fromRight ? index-- : ++index < length) {
-          if (predicate(array[index], index, array)) {
-            return index;
-          }
-        }
-        return -1;
-      }
-      module2.exports = baseFindIndex;
-    }
-  });
-
-  // node_modules/lodash/findIndex.js
-  var require_findIndex = __commonJS({
-    "node_modules/lodash/findIndex.js"(exports, module2) {
-      var baseFindIndex = require_baseFindIndex();
-      var baseIteratee = require_baseIteratee();
-      var toInteger = require_toInteger();
-      var nativeMax = Math.max;
-      function findIndex(array, predicate, fromIndex) {
-        var length = array == null ? 0 : array.length;
-        if (!length) {
-          return -1;
-        }
-        var index = fromIndex == null ? 0 : toInteger(fromIndex);
-        if (index < 0) {
-          index = nativeMax(length + index, 0);
-        }
-        return baseFindIndex(array, baseIteratee(predicate, 3), index);
-      }
-      module2.exports = findIndex;
-    }
-  });
-
-  // node_modules/lodash/find.js
-  var require_find = __commonJS({
-    "node_modules/lodash/find.js"(exports, module2) {
-      var createFind = require_createFind();
-      var findIndex = require_findIndex();
-      var find2 = createFind(findIndex);
-      module2.exports = find2;
     }
   });
 
@@ -35881,7 +42920,7 @@ spurious results.`);
       }
     }
   }
-  var import_escape, import_moment_timezone3, isSimpleDateFormat, date, detailPage, style, numberPrecision, rich, replaceDetailPageHrefCollectionSlug, get3, price, transformers;
+  var import_escape, import_moment_timezone3, isSimpleDateFormat, date, detailPage, style, numberPrecision, rich, replaceDetailPageHrefCollectionSlug, get5, price, transformers;
   var init_Transformers = __esm({
     "packages/systems/dynamo/utils/Transformers/Transformers.ts"() {
       "use strict";
@@ -35946,7 +42985,7 @@ spurious results.`);
         const collectionSlug = collectionSlugMap[collectionId] || originalCollectionSlug;
         return [emptyString, collectionSlug, ...rest].join("/");
       };
-      get3 = (obj, key) => {
+      get5 = (obj, key) => {
         if (obj != null && typeof obj.get === "function") {
           return obj.get(key);
         }
@@ -35956,7 +42995,7 @@ spurious results.`);
         if (!obj)
           return null;
         return renderPriceFromSettings(
-          { unit: get3(obj, "unit"), value: get3(obj, "value") },
+          { unit: get5(obj, "unit"), value: get5(obj, "value") },
           context.currencySettings
         );
       };
@@ -35973,23 +43012,6 @@ spurious results.`);
     "packages/systems/dynamo/utils/Transformers/index.ts"() {
       "use strict";
       init_Transformers();
-    }
-  });
-
-  // node_modules/lodash/_assignValue.js
-  var require_assignValue = __commonJS({
-    "node_modules/lodash/_assignValue.js"(exports, module2) {
-      var baseAssignValue = require_baseAssignValue();
-      var eq = require_eq();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function assignValue(object, key, value) {
-        var objValue = object[key];
-        if (!(hasOwnProperty9.call(object, key) && eq(objValue, value)) || value === void 0 && !(key in object)) {
-          baseAssignValue(object, key, value);
-        }
-      }
-      module2.exports = assignValue;
     }
   });
 
@@ -36032,59 +43054,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_nativeKeysIn.js
-  var require_nativeKeysIn = __commonJS({
-    "node_modules/lodash/_nativeKeysIn.js"(exports, module2) {
-      function nativeKeysIn(object) {
-        var result2 = [];
-        if (object != null) {
-          for (var key in Object(object)) {
-            result2.push(key);
-          }
-        }
-        return result2;
-      }
-      module2.exports = nativeKeysIn;
-    }
-  });
-
-  // node_modules/lodash/_baseKeysIn.js
-  var require_baseKeysIn = __commonJS({
-    "node_modules/lodash/_baseKeysIn.js"(exports, module2) {
-      var isObject2 = require_isObject();
-      var isPrototype = require_isPrototype();
-      var nativeKeysIn = require_nativeKeysIn();
-      var objectProto = Object.prototype;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      function baseKeysIn(object) {
-        if (!isObject2(object)) {
-          return nativeKeysIn(object);
-        }
-        var isProto = isPrototype(object), result2 = [];
-        for (var key in object) {
-          if (!(key == "constructor" && (isProto || !hasOwnProperty9.call(object, key)))) {
-            result2.push(key);
-          }
-        }
-        return result2;
-      }
-      module2.exports = baseKeysIn;
-    }
-  });
-
-  // node_modules/lodash/keysIn.js
-  var require_keysIn = __commonJS({
-    "node_modules/lodash/keysIn.js"(exports, module2) {
-      var arrayLikeKeys = require_arrayLikeKeys();
-      var baseKeysIn = require_baseKeysIn();
-      var isArrayLike = require_isArrayLike();
-      function keysIn(object) {
-        return isArrayLike(object) ? arrayLikeKeys(object, true) : baseKeysIn(object);
-      }
-      module2.exports = keysIn;
-    }
-  });
-
   // node_modules/lodash/_baseAssignIn.js
   var require_baseAssignIn = __commonJS({
     "node_modules/lodash/_baseAssignIn.js"(exports, module2) {
@@ -36118,21 +43087,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_copyArray.js
-  var require_copyArray = __commonJS({
-    "node_modules/lodash/_copyArray.js"(exports, module2) {
-      function copyArray(source, array) {
-        var index = -1, length = source.length;
-        array || (array = Array(length));
-        while (++index < length) {
-          array[index] = source[index];
-        }
-        return array;
-      }
-      module2.exports = copyArray;
-    }
-  });
-
   // node_modules/lodash/_copySymbols.js
   var require_copySymbols = __commonJS({
     "node_modules/lodash/_copySymbols.js"(exports, module2) {
@@ -36145,35 +43099,6 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/_getPrototype.js
-  var require_getPrototype = __commonJS({
-    "node_modules/lodash/_getPrototype.js"(exports, module2) {
-      var overArg = require_overArg();
-      var getPrototype = overArg(Object.getPrototypeOf, Object);
-      module2.exports = getPrototype;
-    }
-  });
-
-  // node_modules/lodash/_getSymbolsIn.js
-  var require_getSymbolsIn = __commonJS({
-    "node_modules/lodash/_getSymbolsIn.js"(exports, module2) {
-      var arrayPush = require_arrayPush();
-      var getPrototype = require_getPrototype();
-      var getSymbols = require_getSymbols();
-      var stubArray = require_stubArray();
-      var nativeGetSymbols = Object.getOwnPropertySymbols;
-      var getSymbolsIn = !nativeGetSymbols ? stubArray : function(object) {
-        var result2 = [];
-        while (object) {
-          arrayPush(result2, getSymbols(object));
-          object = getPrototype(object);
-        }
-        return result2;
-      };
-      module2.exports = getSymbolsIn;
-    }
-  });
-
   // node_modules/lodash/_copySymbolsIn.js
   var require_copySymbolsIn = __commonJS({
     "node_modules/lodash/_copySymbolsIn.js"(exports, module2) {
@@ -36183,19 +43108,6 @@ spurious results.`);
         return copyObject(source, getSymbolsIn(source), object);
       }
       module2.exports = copySymbolsIn;
-    }
-  });
-
-  // node_modules/lodash/_getAllKeysIn.js
-  var require_getAllKeysIn = __commonJS({
-    "node_modules/lodash/_getAllKeysIn.js"(exports, module2) {
-      var baseGetAllKeys = require_baseGetAllKeys();
-      var getSymbolsIn = require_getSymbolsIn();
-      var keysIn = require_keysIn();
-      function getAllKeysIn(object) {
-        return baseGetAllKeys(object, keysIn, getSymbolsIn);
-      }
-      module2.exports = getAllKeysIn;
     }
   });
 
@@ -36340,31 +43252,6 @@ spurious results.`);
         }
       }
       module2.exports = initCloneByTag;
-    }
-  });
-
-  // node_modules/lodash/_baseCreate.js
-  var require_baseCreate = __commonJS({
-    "node_modules/lodash/_baseCreate.js"(exports, module2) {
-      var isObject2 = require_isObject();
-      var objectCreate = Object.create;
-      var baseCreate = function() {
-        function object() {
-        }
-        return function(proto) {
-          if (!isObject2(proto)) {
-            return {};
-          }
-          if (objectCreate) {
-            return objectCreate(proto);
-          }
-          object.prototype = proto;
-          var result2 = new object();
-          object.prototype = void 0;
-          return result2;
-        };
-      }();
-      module2.exports = baseCreate;
     }
   });
 
@@ -36601,7 +43488,7 @@ spurious results.`);
   });
 
   // packages/shared/render/plugins/Commerce/modules/rendering.ts
-  var import_escape2, import_cloneDeep, import_transform2, allowedFieldTypes, isBindingPropToFieldTypeAllowed, getIn, applyBindingsMutation, applyBindings, applyConditionalVisibility, applySkuBoundConditionalVisibility, createStyleMutator, createAttributeMutator, valueMutator, checkedMutator, aspectRatio, mutators, hrefMutator, getPropertyMutator, getCommercePropValue, getTemplateScript, createDomFragment, getTemplateString, getTemplateCollection, checkForAndApplyTemplateCollection, checkForAndApplyBindings, checkForAndApplyConditionalVisibility, renderTree, shippingDataReplacementPaths, flattenCustomData, flattenOrderData;
+  var import_escape2, import_cloneDeep, import_transform2, allowedFieldTypes, isBindingPropToFieldTypeAllowed, getIn2, applyBindingsMutation, applyBindings, applyConditionalVisibility, applySkuBoundConditionalVisibility, createStyleMutator, createAttributeMutator, valueMutator, checkedMutator, aspectRatio, mutators, hrefMutator, getPropertyMutator, getCommercePropValue, getTemplateScript, createDomFragment, getTemplateString, getTemplateCollection, checkForAndApplyTemplateCollection, checkForAndApplyBindings, checkForAndApplyConditionalVisibility, renderTree, shippingDataReplacementPaths, flattenCustomData, flattenOrderData;
   var init_rendering = __esm({
     "packages/shared/render/plugins/Commerce/modules/rendering.ts"() {
       "use strict";
@@ -36623,7 +43510,7 @@ spurious results.`);
         const allowedTypes = allowedFieldTypes[bindingProperty];
         return allowedTypes instanceof Array ? allowedTypes.indexOf(type) > -1 : allowedTypes && type in allowedTypes;
       };
-      getIn = (object, path) => {
+      getIn2 = (object, path) => {
         const nextDotIndex = path.indexOf(".");
         if (object == null) {
           return null;
@@ -36631,7 +43518,7 @@ spurious results.`);
         if (nextDotIndex !== -1) {
           const pathPart = path.slice(0, nextDotIndex);
           const restOfPath = path.slice(nextDotIndex + 1, path.length);
-          return getIn(object[pathPart], restOfPath);
+          return getIn2(object[pathPart], restOfPath);
         }
         return object[path];
       };
@@ -36667,7 +43554,7 @@ spurious results.`);
         if (type === "CommercePropValues") {
           rawValue = getCommercePropValue(data, `${prefix}${path}`);
         } else {
-          rawValue = getIn(data, `${prefix}${path}${suffix}`);
+          rawValue = getIn2(data, `${prefix}${path}${suffix}`);
         }
         const transformedValue = transformers(rawValue, filter, {
           timezone,
@@ -36719,9 +43606,9 @@ spurious results.`);
         const { dataPath, meta } = conditionData;
         const prefixedDataPath = `data.${dataPath}`;
         const item = meta && meta.type === "CommercePropValues" ? {
-          name: getIn(data, `${prefixedDataPath}.name`),
+          name: getIn2(data, `${prefixedDataPath}.name`),
           value: getCommercePropValue(data, prefixedDataPath)
-        } : getIn(data, prefixedDataPath);
+        } : getIn2(data, prefixedDataPath);
         applyConditionToNode(node, item, conditionData, true);
       };
       applySkuBoundConditionalVisibility = ({
@@ -36865,11 +43752,11 @@ spurious results.`);
         return null;
       };
       getCommercePropValue = (data, path) => {
-        const option = getIn(data, path);
+        const option = getIn2(data, path);
         if (option) {
           const pathToOptionAsArray = path.split(".");
           const pathToCommercePropValues = pathToOptionAsArray.slice(0, pathToOptionAsArray.indexOf("product")).concat(["sku", "f_sku_values_3dr"]).join(".");
-          const skuValues = getIn(data, pathToCommercePropValues);
+          const skuValues = getIn2(data, pathToCommercePropValues);
           if (Array.isArray(skuValues)) {
             return getProductOptionValueName(option, simplifySkuValues(skuValues));
           }
@@ -36914,7 +43801,7 @@ spurious results.`);
       };
       getTemplateCollection = (node, data) => {
         const collectionPath = node.hasAttribute(WF_COLLECTION_DATA_KEY) && node.getAttribute(WF_COLLECTION_DATA_KEY);
-        return collectionPath ? getIn(data, `data.${collectionPath}`) : [];
+        return collectionPath ? getIn2(data, `data.${collectionPath}`) : [];
       };
       checkForAndApplyTemplateCollection = (node, data) => {
         if (node && node.hasAttribute(WF_TEMPLATE_ID_DATA_KEY)) {
@@ -37045,11 +43932,11 @@ spurious results.`);
   });
 
   // packages/shared/render/plugins/Commerce/modules/addToCartStore.ts
-  var initialState, createNewStore;
+  var initialState4, createNewStore;
   var init_addToCartStore = __esm({
     "packages/shared/render/plugins/Commerce/modules/addToCartStore.ts"() {
       "use strict";
-      initialState = {
+      initialState4 = {
         selectedSku: "",
         skuValues: {},
         requiresUserSession: false
@@ -37062,7 +43949,7 @@ spurious results.`);
         };
         const updateStore2 = (instanceId, newValues) => {
           if (!store[instanceId]) {
-            store[instanceId] = { ...initialState };
+            store[instanceId] = { ...initialState4 };
           }
           for (const key of Object.keys(newValues)) {
             if (!store[instanceId].hasOwnProperty(key)) {
@@ -38964,15 +45851,15 @@ spurious results.`);
       const field = node.getAttribute(USYS_DATA_ATTRS.field) || "";
       const fieldType = node.getAttribute(USYS_DATA_ATTRS.fieldType) || "";
       if (fieldType === "Option") {
-        node.value = (0, import_get3.default)(userData, [`f_${field}`, "slug"], "");
+        node.value = (0, import_get5.default)(userData, [`f_${field}`, "slug"], "");
         return;
       }
       if (fieldType === "FileRef") {
-        setFileUploadValue(node, (0, import_get3.default)(userData, [`f_${field}`, "id"], ""));
+        setFileUploadValue(node, (0, import_get5.default)(userData, [`f_${field}`, "id"], ""));
         return;
       }
       const dataPath = field && field.includes(RESERVED_USER_PREFIX) ? KEY_FROM_RESERVED_USER_FIELD[field] : `f_${field}`;
-      const value = (0, import_get3.default)(userData, [dataPath], "");
+      const value = (0, import_get5.default)(userData, [dataPath], "");
       if (node.type === "checkbox" && node.checked !== Boolean(value) && node.click) {
         node.click();
         return;
@@ -38981,18 +45868,18 @@ spurious results.`);
     }
     if (node.hasAttribute(USYS_DATA_ATTRS.inputType)) {
       const dataPath = node.getAttribute(USYS_DATA_ATTRS.inputType) || "";
-      const value = (0, import_get3.default)(userData, [dataPath], "");
+      const value = (0, import_get5.default)(userData, [dataPath], "");
       if (value) {
         node.value = value;
       }
     }
   }
-  var import_escape3, import_get3, getPropertyMutator2, mutators2, bindDataToNode;
+  var import_escape3, import_get5, getPropertyMutator2, mutators2, bindDataToNode;
   var init_rendering2 = __esm({
     "packages/systems/users/siteBundles/rendering.ts"() {
       "use strict";
       import_escape3 = __toESM(require_escape());
-      import_get3 = __toESM(require_get());
+      import_get5 = __toESM(require_get());
       init_Transformers2();
       init_RenderingUtils2();
       init_constants3();
@@ -39030,7 +45917,7 @@ spurious results.`);
           Object.keys(binding).forEach((bindingProperty) => {
             const bindingValue = binding[bindingProperty];
             const { dataPath, filter, timezone, type } = bindingValue;
-            const rawValue = (0, import_get3.default)(data, dataPath);
+            const rawValue = (0, import_get5.default)(data, dataPath);
             const transformedValue = transformers(rawValue, filter, {
               timezone,
               collectionSlugMap: {},
@@ -39718,7 +46605,7 @@ spurious results.`);
       });
     }
   }
-  var import_get4, import_forEach, import_find, import_siteBundles, fetchFromStore, updateStore, addStoreWatcher, getInstanceId, addToCartMutation, collectionsQuery, getAllVariants, getAllVariantsAndMemberships, findCollectionItemWrapper, addToCartFormEventTargetMatcher, getErrorType, handleAtcSubmit, addToCartOptionSelectEventTargetMatcher, queryAllWithoutOtherItemWrapperContents, queryAllReferenceRepeaters, removeClass2, showElement3, hideElement3, updateEmptyStateVisibility, showEmptyStateAndHideItemsList, hideEmptyStateAndShowItemsList, updateDropdownsOnPage, disableOptionsOnChange, handleAtcOptionSelectChange, updateSkuBindings, updatePageWithNewSkuValuesData, updateSkuValuesOnPillSelect, handleAtcPageLoad, disableVariantsWithNoStockForRemainingSelections, disableVariantsWithNoStock, updateTextNodeVisibility, updateLightboxJson, isBuyNowButtonEvent, handleBuyNow, register, addToCartEvents_default;
+  var import_get6, import_forEach2, import_find3, import_siteBundles, fetchFromStore, updateStore, addStoreWatcher, getInstanceId3, addToCartMutation, collectionsQuery, getAllVariants, getAllVariantsAndMemberships, findCollectionItemWrapper, addToCartFormEventTargetMatcher, getErrorType, handleAtcSubmit, addToCartOptionSelectEventTargetMatcher, queryAllWithoutOtherItemWrapperContents, queryAllReferenceRepeaters, removeClass2, showElement3, hideElement3, updateEmptyStateVisibility, showEmptyStateAndHideItemsList, hideEmptyStateAndShowItemsList, updateDropdownsOnPage, disableOptionsOnChange, handleAtcOptionSelectChange, updateSkuBindings, updatePageWithNewSkuValuesData, updateSkuValuesOnPillSelect, handleAtcPageLoad, disableVariantsWithNoStockForRemainingSelections, disableVariantsWithNoStock, updateTextNodeVisibility, updateLightboxJson, isBuyNowButtonEvent, handleBuyNow, register, addToCartEvents_default;
   var init_addToCartEvents = __esm({
     "packages/shared/render/plugins/Commerce/modules/addToCartEvents.ts"() {
       "use strict";
@@ -39728,20 +46615,20 @@ spurious results.`);
       init_constants3();
       init_constants4();
       init_utils3();
-      import_get4 = __toESM(require_get());
+      import_get6 = __toESM(require_get());
       init_site();
       init_commerceUtils();
       init_RenderingUtils2();
       init_CurrencyUtils2();
       init_debug();
-      import_forEach = __toESM(require_forEach());
-      import_find = __toESM(require_find());
+      import_forEach2 = __toESM(require_forEach());
+      import_find3 = __toESM(require_find());
       init_rendering();
       init_addToCartStore();
       init_PillGroup();
       import_siteBundles = __toESM(require_siteBundles());
       ({ fetchFromStore, updateStore, addStoreWatcher } = createNewStore());
-      getInstanceId = (form) => {
+      getInstanceId3 = (form) => {
         const instanceId = form.getAttribute(DATA_ATTR_COMMERCE_PRODUCT_ID);
         if (instanceId) {
           return instanceId;
@@ -39894,7 +46781,7 @@ spurious results.`);
         );
         inputButton.value = loadingTextFromButton ? loadingTextFromButton : eventTarget.getAttribute(DATA_ATTR_LOADING_TEXT) || "";
         inputButton.setAttribute("aria-busy", "true");
-        const skuId = fetchFromStore(getInstanceId(eventTarget), "selectedSku") || "";
+        const skuId = fetchFromStore(getInstanceId3(eventTarget), "selectedSku") || "";
         const formData = formToObject(eventTarget);
         const formCount = formData[NODE_NAME_COMMERCE_ADD_TO_CART_QUANTITY_INPUT];
         const count = formCount ? parseInt(formCount, 10) : 1;
@@ -39914,7 +46801,7 @@ spurious results.`);
           return;
         }
         const requiresUserSession = fetchFromStore(
-          getInstanceId(eventTarget),
+          getInstanceId3(eventTarget),
           "requiresUserSession"
         );
         const hasUserSession = document.cookie.split(";").some((cookie) => cookie.indexOf(LOGGEDIN_COOKIE_NAME) > -1);
@@ -40072,7 +46959,7 @@ spurious results.`);
           const { recentlySelectedOptionSet, previouslySelectedOptionSets } = optionSetData;
           if (recentlySelectedOptionSet && selectedOptionSets.length > 1) {
             const recentlySelectedOptionSetValue = recentlySelectedOptionSet.value;
-            (0, import_forEach.default)(previouslySelectedOptionSets, (previouslySelectedOptionSet) => {
+            (0, import_forEach2.default)(previouslySelectedOptionSets, (previouslySelectedOptionSet) => {
               const optionSetValueCombinationWithMostRecent = [
                 recentlySelectedOptionSetValue,
                 previouslySelectedOptionSet.value
@@ -40105,9 +46992,9 @@ spurious results.`);
               }
             });
           }
-          (0, import_forEach.default)(selectedOptionSets, (optionSet) => {
+          (0, import_forEach2.default)(selectedOptionSets, (optionSet) => {
             const id = optionSet.getAttribute(DATA_ATTR_COMMERCE_OPTION_SET_ID);
-            (0, import_forEach.default)(optionSet.options, (option) => {
+            (0, import_forEach2.default)(optionSet.options, (option) => {
               if (!option.value) {
                 option.enabled = true;
               } else {
@@ -40115,7 +47002,7 @@ spurious results.`);
               }
             });
           });
-          (0, import_forEach.default)(unselectedOptionSets, (optionSet) => {
+          (0, import_forEach2.default)(unselectedOptionSets, (optionSet) => {
             const id = optionSet.getAttribute(DATA_ATTR_COMMERCE_OPTION_SET_ID);
             disableVariantsWithNoStockForRemainingSelections(
               items,
@@ -40145,7 +47032,7 @@ spurious results.`);
         if (!(optionListElement instanceof Element) || !optionSetId || !(addToCartForm instanceof HTMLFormElement)) {
           return;
         }
-        const instanceId = getInstanceId(addToCartForm);
+        const instanceId = getInstanceId3(addToCartForm);
         const currentSkuValues = fetchFromStore(instanceId, "skuValues");
         const newSkuValues = {
           ...currentSkuValues,
@@ -40196,7 +47083,7 @@ spurious results.`);
           updateTextNodeVisibility(node);
         }
         if (binding.from === "f_main_image_4dr" || binding.from === "f_main_image_4dr.url") {
-          const mainImage = (0, import_get4.default)(newSkuItem, binding.from.replace(/\.url$/, ""));
+          const mainImage = (0, import_get6.default)(newSkuItem, binding.from.replace(/\.url$/, ""));
           if (binding.to === "style.background-image") {
             node.style.backgroundImage = mainImage && mainImage.url ? `url("${mainImage.url}")` : "none";
           } else if (binding.to === "media") {
@@ -40217,7 +47104,7 @@ spurious results.`);
           }
         }
         if (binding.from === "f_more_images_4dr" || binding.from.startsWith("f_more_images_4dr.")) {
-          const image = (0, import_get4.default)(newSkuItem, binding.from.replace(/\.url$/, ""));
+          const image = (0, import_get6.default)(newSkuItem, binding.from.replace(/\.url$/, ""));
           if (binding.to === "style.background-image") {
             node.style.backgroundImage = image ? `url("${image.url}")` : "none";
           } else if (binding.to === "media") {
@@ -40243,7 +47130,7 @@ spurious results.`);
           }
         }
         if (binding.from === "ecSkuInventoryQuantity") {
-          const inventoryQuantity = (0, import_get4.default)(newSkuItem, "inventory.type") === "infinite" ? null : (0, import_get4.default)(newSkuItem, "inventory.quantity");
+          const inventoryQuantity = (0, import_get6.default)(newSkuItem, "inventory.type") === "infinite" ? null : (0, import_get6.default)(newSkuItem, "inventory.quantity");
           node[binding.to === "innerHTML" ? "innerText" : binding.to] = inventoryQuantity;
           updateTextNodeVisibility(node);
         }
@@ -40254,7 +47141,7 @@ spurious results.`);
           const items = data?.database?.collections?.c_sku_?.items ?? [];
           const products = data?.database?.collections?.c_product_?.items ?? [];
           const productType = products[0] ? products[0].f_ec_product_type_2dr10dr.name : "Advanced";
-          const newSkuItem = (0, import_find.default)(items, (item) => {
+          const newSkuItem = (0, import_find3.default)(items, (item) => {
             if (item.f_sku_values_3dr && Array.isArray(item.f_sku_values_3dr)) {
               const skuValues = simplifySkuValues(item.f_sku_values_3dr);
               return Object.keys(newSkuValues).every(
@@ -40312,7 +47199,7 @@ spurious results.`);
                 collectionItemWrapper,
                 `[${WF_SKU_BINDING_DATA_KEY}]`
               );
-              (0, import_forEach.default)(skuBoundNodes, (node) => {
+              (0, import_forEach2.default)(skuBoundNodes, (node) => {
                 const skuBindingsData = node.getAttribute(
                   WF_SKU_BINDING_DATA_KEY
                 );
@@ -40329,7 +47216,7 @@ spurious results.`);
                 collectionItemWrapper,
                 `[${WF_SKU_CONDITION_DATA_KEY}]`
               );
-              (0, import_forEach.default)(skuConditionBoundNodes, (node) => {
+              (0, import_forEach2.default)(skuConditionBoundNodes, (node) => {
                 const conditionData = safeParseJson(
                   // @ts-expect-error - TS18046 - 'node' is of type 'unknown'.
                   node.getAttribute(WF_SKU_CONDITION_DATA_KEY)
@@ -40388,7 +47275,7 @@ spurious results.`);
         );
         if (window.Webflow.env("preview")) {
           if (event.detail.isInitial) {
-            (0, import_forEach.default)(addToCartForms, (addToCartForm) => {
+            (0, import_forEach2.default)(addToCartForms, (addToCartForm) => {
               const groups = new PillGroups(
                 // @ts-expect-error - TS2345 - Argument of type 'Element' is not assignable to parameter of type 'HTMLElement'.
                 addToCartForm,
@@ -40406,7 +47293,7 @@ spurious results.`);
         if (window.Webflow.env("design")) {
           return;
         }
-        (0, import_forEach.default)(addToCartForms, (addToCartForm) => {
+        (0, import_forEach2.default)(addToCartForms, (addToCartForm) => {
           const addToCartButton = findElementByNodeType(
             NODE_TYPE_COMMERCE_ADD_TO_CART_BUTTON,
             addToCartForm
@@ -40429,7 +47316,7 @@ spurious results.`);
               hideElement3(buyNowButton);
             }
           }
-          const instanceId = getInstanceId(addToCartForm);
+          const instanceId = getInstanceId3(addToCartForm);
           if (event.detail.isInitial) {
             updateStore(instanceId, {
               // @ts-expect-error - TS2322 - Type 'string | null' is not assignable to type 'string | undefined'.
@@ -40546,7 +47433,7 @@ spurious results.`);
                   if (optionSet.getAttribute(DATA_ATTR_NODE_TYPE) === NODE_TYPE_COMMERCE_ADD_TO_CART_PILL_GROUP) {
                     optionSet = optionSet._wfPillGroup;
                   }
-                  (0, import_forEach.default)(optionSet.options, (option) => {
+                  (0, import_forEach2.default)(optionSet.options, (option) => {
                     if (!option.value) {
                       option.enabled = true;
                     } else {
@@ -40566,7 +47453,7 @@ spurious results.`);
                   if (event.detail.isInitial && optionListElement && optionListElement.getAttribute(
                     DATA_ATTR_PRESELECT_DEFAULT_VARIANT
                   ) === "true") {
-                    const defaultSkuId = (0, import_get4.default)(data, [
+                    const defaultSkuId = (0, import_get6.default)(data, [
                       "database",
                       "collections",
                       "c_product_",
@@ -40623,7 +47510,7 @@ spurious results.`);
         if (possibleVariantSelections.length === 1) {
           possibleVariantSelections = items;
         }
-        (0, import_forEach.default)(optionSet.options, (option) => {
+        (0, import_forEach2.default)(optionSet.options, (option) => {
           if (!option.value) {
             option.enabled = true;
           } else {
@@ -40727,7 +47614,7 @@ spurious results.`);
           return;
         }
         const requiresUserSession = fetchFromStore(
-          getInstanceId(addToCartForm),
+          getInstanceId3(addToCartForm),
           "requiresUserSession"
         );
         const hasUserSession = document.cookie.split(";").some((cookie) => cookie.indexOf(LOGGEDIN_COOKIE_NAME) > -1);
@@ -40748,7 +47635,7 @@ spurious results.`);
           addToCartErrorElement.style.removeProperty("display");
           return;
         }
-        const skuId = fetchFromStore(getInstanceId(addToCartForm), "selectedSku") || "";
+        const skuId = fetchFromStore(getInstanceId3(addToCartForm), "selectedSku") || "";
         const formData = formToObject(addToCartForm);
         const formCount = formData[NODE_NAME_COMMERCE_ADD_TO_CART_QUANTITY_INPUT];
         const count = formCount ? parseInt(formCount, 10) : 1;
@@ -40825,33 +47712,6 @@ spurious results.`);
         return isObjectLike2(value) && isArrayLike(value);
       }
       module2.exports = isArrayLikeObject;
-    }
-  });
-
-  // node_modules/lodash/isPlainObject.js
-  var require_isPlainObject = __commonJS({
-    "node_modules/lodash/isPlainObject.js"(exports, module2) {
-      var baseGetTag = require_baseGetTag();
-      var getPrototype = require_getPrototype();
-      var isObjectLike2 = require_isObjectLike();
-      var objectTag = "[object Object]";
-      var funcProto = Function.prototype;
-      var objectProto = Object.prototype;
-      var funcToString = funcProto.toString;
-      var hasOwnProperty9 = objectProto.hasOwnProperty;
-      var objectCtorString = funcToString.call(Object);
-      function isPlainObject(value) {
-        if (!isObjectLike2(value) || baseGetTag(value) != objectTag) {
-          return false;
-        }
-        var proto = getPrototype(value);
-        if (proto === null) {
-          return true;
-        }
-        var Ctor = hasOwnProperty9.call(proto, "constructor") && proto.constructor;
-        return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
-      }
-      module2.exports = isPlainObject;
     }
   });
 
@@ -40976,104 +47836,6 @@ spurious results.`);
         }, keysIn);
       }
       module2.exports = baseMerge;
-    }
-  });
-
-  // node_modules/lodash/_apply.js
-  var require_apply = __commonJS({
-    "node_modules/lodash/_apply.js"(exports, module2) {
-      function apply(func, thisArg, args) {
-        switch (args.length) {
-          case 0:
-            return func.call(thisArg);
-          case 1:
-            return func.call(thisArg, args[0]);
-          case 2:
-            return func.call(thisArg, args[0], args[1]);
-          case 3:
-            return func.call(thisArg, args[0], args[1], args[2]);
-        }
-        return func.apply(thisArg, args);
-      }
-      module2.exports = apply;
-    }
-  });
-
-  // node_modules/lodash/_overRest.js
-  var require_overRest = __commonJS({
-    "node_modules/lodash/_overRest.js"(exports, module2) {
-      var apply = require_apply();
-      var nativeMax = Math.max;
-      function overRest(func, start, transform2) {
-        start = nativeMax(start === void 0 ? func.length - 1 : start, 0);
-        return function() {
-          var args = arguments, index = -1, length = nativeMax(args.length - start, 0), array = Array(length);
-          while (++index < length) {
-            array[index] = args[start + index];
-          }
-          index = -1;
-          var otherArgs = Array(start + 1);
-          while (++index < start) {
-            otherArgs[index] = args[index];
-          }
-          otherArgs[start] = transform2(array);
-          return apply(func, this, otherArgs);
-        };
-      }
-      module2.exports = overRest;
-    }
-  });
-
-  // node_modules/lodash/_baseSetToString.js
-  var require_baseSetToString = __commonJS({
-    "node_modules/lodash/_baseSetToString.js"(exports, module2) {
-      var constant2 = require_constant();
-      var defineProperty = require_defineProperty();
-      var identity3 = require_identity();
-      var baseSetToString = !defineProperty ? identity3 : function(func, string) {
-        return defineProperty(func, "toString", {
-          "configurable": true,
-          "enumerable": false,
-          "value": constant2(string),
-          "writable": true
-        });
-      };
-      module2.exports = baseSetToString;
-    }
-  });
-
-  // node_modules/lodash/_shortOut.js
-  var require_shortOut = __commonJS({
-    "node_modules/lodash/_shortOut.js"(exports, module2) {
-      var HOT_COUNT = 800;
-      var HOT_SPAN = 16;
-      var nativeNow = Date.now;
-      function shortOut(func) {
-        var count = 0, lastCalled = 0;
-        return function() {
-          var stamp = nativeNow(), remaining = HOT_SPAN - (stamp - lastCalled);
-          lastCalled = stamp;
-          if (remaining > 0) {
-            if (++count >= HOT_COUNT) {
-              return arguments[0];
-            }
-          } else {
-            count = 0;
-          }
-          return func.apply(void 0, arguments);
-        };
-      }
-      module2.exports = shortOut;
-    }
-  });
-
-  // node_modules/lodash/_setToString.js
-  var require_setToString = __commonJS({
-    "node_modules/lodash/_setToString.js"(exports, module2) {
-      var baseSetToString = require_baseSetToString();
-      var shortOut = require_shortOut();
-      var setToString = shortOut(baseSetToString);
-      module2.exports = setToString;
     }
   });
 
@@ -41300,10 +48062,10 @@ spurious results.`);
     "node_modules/lodash/merge.js"(exports, module2) {
       var baseMerge = require_baseMerge();
       var createAssigner = require_createAssigner();
-      var merge2 = createAssigner(function(object, source, srcIndex) {
+      var merge4 = createAssigner(function(object, source, srcIndex) {
         baseMerge(object, source, srcIndex);
       });
-      module2.exports = merge2;
+      module2.exports = merge4;
     }
   });
 
@@ -41885,11 +48647,11 @@ spurious results.`);
           var bestColor = null;
           var bestScore = 0;
           var readability;
-          var includeFallbackColors, level, size;
+          var includeFallbackColors, level, size2;
           args = args || {};
           includeFallbackColors = args.includeFallbackColors;
           level = args.level;
-          size = args.size;
+          size2 = args.size;
           for (var i = 0; i < colorList.length; i++) {
             readability = tinycolor2.readability(baseColor, colorList[i]);
             if (readability > bestScore) {
@@ -41897,7 +48659,7 @@ spurious results.`);
               bestColor = tinycolor2(colorList[i]);
             }
           }
-          if (tinycolor2.isReadable(baseColor, bestColor, { "level": level, "size": size }) || !includeFallbackColors) {
+          if (tinycolor2.isReadable(baseColor, bestColor, { "level": level, "size": size2 }) || !includeFallbackColors) {
             return bestColor;
           } else {
             args.includeFallbackColors = false;
@@ -42201,17 +48963,17 @@ spurious results.`);
           return false;
         }
         function validateWCAG2Parms(parms) {
-          var level, size;
+          var level, size2;
           parms = parms || { "level": "AA", "size": "small" };
           level = (parms.level || "AA").toUpperCase();
-          size = (parms.size || "small").toLowerCase();
+          size2 = (parms.size || "small").toLowerCase();
           if (level !== "AA" && level !== "AAA") {
             level = "AA";
           }
-          if (size !== "small" && size !== "large") {
-            size = "small";
+          if (size2 !== "small" && size2 !== "large") {
+            size2 = "small";
           }
-          return { "level": level, "size": size };
+          return { "level": level, "size": size2 };
         }
         if (typeof module2 !== "undefined" && module2.exports) {
           module2.exports = tinycolor2;
@@ -43498,30 +50260,20 @@ spurious results.`);
     }
   });
 
-  // node_modules/lodash/defaultTo.js
-  var require_defaultTo = __commonJS({
-    "node_modules/lodash/defaultTo.js"(exports, module2) {
-      function defaultTo2(value, defaultValue) {
-        return value == null || value !== value ? defaultValue : value;
-      }
-      module2.exports = defaultTo2;
-    }
-  });
-
   // packages/shared/render/plugins/Commerce/modules/cartEvents.ts
-  var import_mergeWith, import_forEach2, import_defaultTo, MODAL, LEFT_SIDEBAR, RIGHT_SIDEBAR, LEFT_DROPDOWN, RIGHT_DROPDOWN, REMOVE_ITEM, UPDATE_ITEM_QUANTITY, updateItemQuantityMutation, forEachElementInForm, disableAllFormElements, enableAllFormElements, searchTreeForRemoveLink, isItemRemovedEvent, isItemQuantityChangedEvent, isItemQuantityInputEvent, isCartButtonEvent, isCartCheckoutButtonEvent, isCartWrapperEvent, isCartFormEvent, getFormElement, handleItemRemoved, handleItemQuantityChanged, handleItemInputChanged, handleChangeCartStateEvent, handleCartButton, handleCartCheckoutButton, handleSubmitForm, handleCartContainerLeave, cartContainerStates, handlePreviewMode, handleDesignMode, doForAllMatchingClass, showCartDefaultState, showCartEmptyState, hideErrorState, showErrorState, hasItems2, hasErrors, updateCartA11Y, renderCart, handleRenderCart, handleCartKeyUp, getCartContainer, handleClickCloseCart, getFocusableElements, handleCartFocusTrap, register3, cartEvents_default;
+  var import_mergeWith, import_forEach3, import_defaultTo2, MODAL, LEFT_SIDEBAR, RIGHT_SIDEBAR, LEFT_DROPDOWN, RIGHT_DROPDOWN, REMOVE_ITEM, UPDATE_ITEM_QUANTITY, updateItemQuantityMutation, forEachElementInForm, disableAllFormElements, enableAllFormElements, searchTreeForRemoveLink, isItemRemovedEvent, isItemQuantityChangedEvent, isItemQuantityInputEvent, isCartButtonEvent, isCartCheckoutButtonEvent, isCartWrapperEvent, isCartFormEvent, getFormElement, handleItemRemoved, handleItemQuantityChanged, handleItemInputChanged, handleChangeCartStateEvent, handleCartButton, handleCartCheckoutButton, handleSubmitForm, handleCartContainerLeave, cartContainerStates, handlePreviewMode, handleDesignMode, doForAllMatchingClass, showCartDefaultState, showCartEmptyState, hideErrorState, showErrorState, hasItems2, hasErrors, updateCartA11Y, renderCart, handleRenderCart, handleCartKeyUp, getCartContainer, handleClickCloseCart, getFocusableElements, handleCartFocusTrap, register3, cartEvents_default;
   var init_cartEvents = __esm({
     "packages/shared/render/plugins/Commerce/modules/cartEvents.ts"() {
       "use strict";
       init_lib7();
       import_mergeWith = __toESM(require_mergeWith());
-      import_forEach2 = __toESM(require_forEach());
+      import_forEach3 = __toESM(require_forEach());
       init_constants();
       init_commerceUtils();
       init_debug();
       init_webPaymentsEvents();
       init_rendering();
-      import_defaultTo = __toESM(require_defaultTo());
+      import_defaultTo2 = __toESM(require_defaultTo());
       ({ MODAL, LEFT_SIDEBAR, RIGHT_SIDEBAR, LEFT_DROPDOWN, RIGHT_DROPDOWN } = CART_TYPES);
       ({ REMOVE_ITEM, UPDATE_ITEM_QUANTITY } = COMMERCE_CART_PUBLISHED_SITE_ACTIONS);
       updateItemQuantityMutation = lib_default2`
@@ -43774,11 +50526,11 @@ spurious results.`);
           return;
         }
         const cartType = cartElement.getAttribute(CART_TYPE);
-        const duration = (0, import_defaultTo.default)(
+        const duration = (0, import_defaultTo2.default)(
           cartElement.getAttribute(DATA_ATTR_ANIMATION_DURATION),
           ANIMATION_DURATION_DEFAULT
         ) + "ms";
-        const containerEasing = (0, import_defaultTo.default)(
+        const containerEasing = (0, import_defaultTo2.default)(
           cartElement.getAttribute(DATA_ATTR_ANIMATION_EASING),
           ANIMATION_EASING_DEFAULT
         );
@@ -44181,7 +50933,7 @@ spurious results.`);
       handleCartKeyUp = (event) => {
         if (event.keyCode === 27) {
           const openCarts = Array.from(document.querySelectorAll(`[${CART_OPEN}]`));
-          (0, import_forEach2.default)(openCarts, (cart) => {
+          (0, import_forEach3.default)(openCarts, (cart) => {
             const evt = new CustomEvent(CHANGE_CART_EVENT, {
               bubbles: true,
               detail: {
@@ -44208,7 +50960,7 @@ spurious results.`);
           return;
         }
         const openCarts = Array.from(document.querySelectorAll(`[${CART_OPEN}]`));
-        (0, import_forEach2.default)(openCarts, (cart) => {
+        (0, import_forEach3.default)(openCarts, (cart) => {
           const cartContainer = getCartContainer(cart);
           const cartOpenButton = findElementByNodeType(
             NODE_TYPE_COMMERCE_CART_OPEN_LINK,
@@ -44242,7 +50994,7 @@ spurious results.`);
           return;
         }
         const openCarts = Array.from(document.querySelectorAll(`[${CART_OPEN}]`));
-        (0, import_forEach2.default)(openCarts, (cart) => {
+        (0, import_forEach3.default)(openCarts, (cart) => {
           const cartContainer = getCartContainer(cart);
           if (!(cartContainer instanceof Element)) {
             return;
@@ -44289,111 +51041,6 @@ spurious results.`);
         }
       };
       cartEvents_default = { register: register3 };
-    }
-  });
-
-  // node_modules/lodash/now.js
-  var require_now = __commonJS({
-    "node_modules/lodash/now.js"(exports, module2) {
-      var root2 = require_root();
-      var now = function() {
-        return root2.Date.now();
-      };
-      module2.exports = now;
-    }
-  });
-
-  // node_modules/lodash/debounce.js
-  var require_debounce = __commonJS({
-    "node_modules/lodash/debounce.js"(exports, module2) {
-      var isObject2 = require_isObject();
-      var now = require_now();
-      var toNumber = require_toNumber();
-      var FUNC_ERROR_TEXT = "Expected a function";
-      var nativeMax = Math.max;
-      var nativeMin = Math.min;
-      function debounce2(func, wait, options) {
-        var lastArgs, lastThis, maxWait, result2, timerId, lastCallTime, lastInvokeTime = 0, leading = false, maxing = false, trailing = true;
-        if (typeof func != "function") {
-          throw new TypeError(FUNC_ERROR_TEXT);
-        }
-        wait = toNumber(wait) || 0;
-        if (isObject2(options)) {
-          leading = !!options.leading;
-          maxing = "maxWait" in options;
-          maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
-          trailing = "trailing" in options ? !!options.trailing : trailing;
-        }
-        function invokeFunc(time) {
-          var args = lastArgs, thisArg = lastThis;
-          lastArgs = lastThis = void 0;
-          lastInvokeTime = time;
-          result2 = func.apply(thisArg, args);
-          return result2;
-        }
-        function leadingEdge(time) {
-          lastInvokeTime = time;
-          timerId = setTimeout(timerExpired, wait);
-          return leading ? invokeFunc(time) : result2;
-        }
-        function remainingWait(time) {
-          var timeSinceLastCall = time - lastCallTime, timeSinceLastInvoke = time - lastInvokeTime, timeWaiting = wait - timeSinceLastCall;
-          return maxing ? nativeMin(timeWaiting, maxWait - timeSinceLastInvoke) : timeWaiting;
-        }
-        function shouldInvoke(time) {
-          var timeSinceLastCall = time - lastCallTime, timeSinceLastInvoke = time - lastInvokeTime;
-          return lastCallTime === void 0 || timeSinceLastCall >= wait || timeSinceLastCall < 0 || maxing && timeSinceLastInvoke >= maxWait;
-        }
-        function timerExpired() {
-          var time = now();
-          if (shouldInvoke(time)) {
-            return trailingEdge(time);
-          }
-          timerId = setTimeout(timerExpired, remainingWait(time));
-        }
-        function trailingEdge(time) {
-          timerId = void 0;
-          if (trailing && lastArgs) {
-            return invokeFunc(time);
-          }
-          lastArgs = lastThis = void 0;
-          return result2;
-        }
-        function cancel() {
-          if (timerId !== void 0) {
-            clearTimeout(timerId);
-          }
-          lastInvokeTime = 0;
-          lastArgs = lastCallTime = lastThis = timerId = void 0;
-        }
-        function flush() {
-          return timerId === void 0 ? result2 : trailingEdge(now());
-        }
-        function debounced() {
-          var time = now(), isInvoking = shouldInvoke(time);
-          lastArgs = arguments;
-          lastThis = this;
-          lastCallTime = time;
-          if (isInvoking) {
-            if (timerId === void 0) {
-              return leadingEdge(lastCallTime);
-            }
-            if (maxing) {
-              clearTimeout(timerId);
-              timerId = setTimeout(timerExpired, wait);
-              return invokeFunc(lastCallTime);
-            }
-          }
-          if (timerId === void 0) {
-            timerId = setTimeout(timerExpired, wait);
-          }
-          return result2;
-        }
-        debounced.cancel = cancel;
-        debounced.flush = flush;
-        return debounced;
-      }
-      module2.exports = debounce2;
     }
   });
 
@@ -45073,7 +51720,7 @@ spurious results.`);
         }
         return obj;
       };
-      var merge2 = function merge3(target, source, options) {
+      var merge4 = function merge5(target, source, options) {
         if (!source) {
           return target;
         }
@@ -45101,7 +51748,7 @@ spurious results.`);
             if (has.call(target, i)) {
               var targetItem = target[i];
               if (targetItem && typeof targetItem === "object" && item && typeof item === "object") {
-                target[i] = merge3(targetItem, item, options);
+                target[i] = merge5(targetItem, item, options);
               } else {
                 target.push(item);
               }
@@ -45114,7 +51761,7 @@ spurious results.`);
         return Object.keys(source).reduce(function(acc, key) {
           var value = source[key];
           if (has.call(acc, key)) {
-            acc[key] = merge3(acc[key], value, options);
+            acc[key] = merge5(acc[key], value, options);
           } else {
             acc[key] = value;
           }
@@ -45229,7 +51876,7 @@ spurious results.`);
         isBuffer,
         isRegExp,
         maybeMap,
-        merge: merge2
+        merge: merge4
       };
     }
   });
@@ -45663,7 +52310,7 @@ spurious results.`);
   });
 
   // node_modules/qs/lib/index.js
-  var require_lib2 = __commonJS({
+  var require_lib4 = __commonJS({
     "node_modules/qs/lib/index.js"(exports, module2) {
       "use strict";
       var stringify3 = require_stringify();
@@ -45683,7 +52330,7 @@ spurious results.`);
     "packages/shared/render/plugins/Commerce/modules/orderConfirmationEvents.ts"() {
       "use strict";
       init_lib7();
-      import_qs = __toESM(require_lib2());
+      import_qs = __toESM(require_lib4());
       init_commerceUtils();
       init_rendering();
       init_constants();
@@ -46656,99 +53303,6 @@ spurious results.`);
         }
         return api;
       });
-    }
-  });
-
-  // packages/shared/render/plugins/BaseSiteModules/webflow-ix-events.js
-  var require_webflow_ix_events = __commonJS({
-    "packages/shared/render/plugins/BaseSiteModules/webflow-ix-events.js"(exports, module2) {
-      "use strict";
-      var $2 = window.jQuery;
-      var api = {};
-      var eventQueue = [];
-      var namespace = ".w-ix";
-      var eventTriggers = {
-        reset: function(i, el) {
-          el.__wf_intro = null;
-        },
-        intro: function(i, el) {
-          if (el.__wf_intro) {
-            return;
-          }
-          el.__wf_intro = true;
-          $2(el).triggerHandler(api.types.INTRO);
-        },
-        outro: function(i, el) {
-          if (!el.__wf_intro) {
-            return;
-          }
-          el.__wf_intro = null;
-          $2(el).triggerHandler(api.types.OUTRO);
-        }
-      };
-      api.triggers = {};
-      api.types = {
-        INTRO: "w-ix-intro" + namespace,
-        OUTRO: "w-ix-outro" + namespace
-      };
-      api.init = function() {
-        var count = eventQueue.length;
-        for (var i = 0; i < count; i++) {
-          var memo = eventQueue[i];
-          memo[0](0, memo[1]);
-        }
-        eventQueue = [];
-        $2.extend(api.triggers, eventTriggers);
-      };
-      api.async = function() {
-        for (var key in eventTriggers) {
-          var func = eventTriggers[key];
-          if (!eventTriggers.hasOwnProperty(key)) {
-            continue;
-          }
-          api.triggers[key] = function(i, el) {
-            eventQueue.push([func, el]);
-          };
-        }
-      };
-      api.async();
-      module2.exports = api;
-    }
-  });
-
-  // packages/shared/render/plugins/BaseSiteModules/webflow-ix2-events.js
-  var require_webflow_ix2_events = __commonJS({
-    "packages/shared/render/plugins/BaseSiteModules/webflow-ix2-events.js"(exports, module2) {
-      "use strict";
-      var IXEvents = require_webflow_ix_events();
-      function dispatchCustomEvent(element, eventName) {
-        var event = document.createEvent("CustomEvent");
-        event.initCustomEvent(eventName, true, true, null);
-        element.dispatchEvent(event);
-      }
-      var $2 = window.jQuery;
-      var api = {};
-      var namespace = ".w-ix";
-      var eventTriggers = {
-        reset: function(i, el) {
-          IXEvents.triggers.reset(i, el);
-        },
-        intro: function(i, el) {
-          IXEvents.triggers.intro(i, el);
-          dispatchCustomEvent(el, "COMPONENT_ACTIVE");
-        },
-        outro: function(i, el) {
-          IXEvents.triggers.outro(i, el);
-          dispatchCustomEvent(el, "COMPONENT_INACTIVE");
-        }
-      };
-      api.triggers = {};
-      api.types = {
-        INTRO: "w-ix-intro" + namespace,
-        OUTRO: "w-ix-outro" + namespace
-      };
-      $2.extend(api.triggers, eventTriggers);
-      module2.exports = api;
     }
   });
 
@@ -47862,6 +54416,8 @@ spurious results.`);
   require_webflow_brand();
   require_webflow_focus_visible();
   require_webflow_focus();
+  require_webflow_ix2_events();
+  require_webflow_ix2();
   require_webflow_links();
   require_webflow_scroll();
   require_webflow_touch();
@@ -47885,6 +54441,16 @@ spurious results.`);
  * @license MIT
  */
 /*! Bundled license information:
+
+timm/lib/timm.js:
+  (*!
+   * Timm
+   *
+   * Immutability helpers with fast reads and acceptable writes.
+   *
+   * @copyright Guillermo Grau Panea 2016
+   * @license MIT
+   *)
 
 react/cjs/react.production.min.js:
   (**
