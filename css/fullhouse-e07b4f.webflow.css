@@ -3046,12 +3046,23 @@ blockquote {
     font-size: 30px;
   }
 
+  .heading-2 {
+    text-align: left;
+    font-size: 28px;
+  }
+
   .container-2 {
     max-width: none;
   }
 
   .centered-heading {
     margin-bottom: 24px;
+  }
+
+  .button-primary {
+    width: auto;
+    font-size: 10px;
+    overflow: visible;
   }
 
   .nav-link-2 {
