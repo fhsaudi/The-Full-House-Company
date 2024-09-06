@@ -1,5 +1,5 @@
 <!DOCTYPE html><!--  This site was created in Webflow. https://webflow.com  --><!--  Last Published: Fri Sep 06 2024 13:32:31 GMT+0000 (Coordinated Universal Time)  -->
-<html data-wf-page="66b0579c14f21affe6bbc3e3" data-wf-site="66b0579c14f21affe6bbc3a5">
+<html data-wf-page="66b0579c14f21affe6bbc3e5" data-wf-site="66b0579c14f21affe6bbc3a5">
 <head>
   <meta charset="utf-8">
   <title></title>
@@ -25,7 +25,7 @@
   <link href="images/favicon.png" rel="shortcut icon" type="image/x-icon">
   <link href="images/webclip.png" rel="apple-touch-icon">
 </head>
-<body class="body">
+<body>
   <div class="menu-wrapper">
     <div data-animation="default" class="navbar w-nav" data-easing2="ease-out" data-easing="ease-in" data-collapse="medium" role="banner" data-duration="9000" id="NAVBAR" data-doc-height="1">
       <div class="container">
@@ -43,12 +43,41 @@
   </div>
   <div class="page-title-section">
     <div class="container">
-      <h1 class="page-title w-dyn-bind-empty"></h1>
+      <h1 class="page-title"></h1>
     </div>
   </div>
   <div class="content-section">
     <div class="container">
-      <div class="w-dyn-bind-empty w-richtext"></div>
+      <div class="shopping-page-wrapper">
+        <div class="shopping-page-left">
+          <div class="shopping-page-image">
+            <div class="pill-2 badge primary sale">Sale</div>
+          </div>
+        </div>
+        <div class="shipping-page-right">
+          <h2 class="page-product-headin"></h2>
+          <div class="page-price-wrapping">
+            <div class="shop-item-price-page"></div>
+            <div class="shop-item-price-page compare-at"></div>
+          </div>
+          <div>
+            <form data-node-type="commerce-add-to-cart-form" class="w-commerce-commerceaddtocartform"><label for="quantity-8342fe54ad998bceba4bd86dd02b8e79">Quantity</label>
+              <div class="add-to-cart-page-wrapper"><input type="number" pattern="^[0-9]+$" inputmode="numeric" id="quantity-8342fe54ad998bceba4bd86dd02b8e79" name="commerce-add-to-cart-quantity-input" min="1" class="w-commerce-commerceaddtocartquantityinput input cart-quantity" value="1"><input type="submit" data-node-type="commerce-add-to-cart-button" data-loading-text="Adding to cart..." aria-busy="false" aria-haspopup="dialog" class="w-commerce-commerceaddtocartbutton btn outline" value="Add to Cart"></div>
+            </form>
+            <div style="display:none" class="w-commerce-commerceaddtocartoutofstock" tabindex="0">
+              <div>This product is out of stock.</div>
+            </div>
+            <div aria-live="" data-node-type="commerce-add-to-cart-error" style="display:none" class="w-commerce-commerceaddtocarterror">
+              <div data-node-type="commerce-add-to-cart-error" data-w-add-to-cart-quantity-error="Product is not available in this quantity." data-w-add-to-cart-general-error="Something went wrong when adding this item to the cart." data-w-add-to-cart-mixed-cart-error="You can’t purchase another product with a subscription." data-w-add-to-cart-buy-now-error="Something went wrong when trying to purchase this item." data-w-add-to-cart-checkout-disabled-error="Checkout is disabled on this site." data-w-add-to-cart-select-all-options-error="Please select an option in each set.">Product is not available in this quantity.</div>
+            </div>
+          </div>
+          <div class="w-richtext"></div>
+          <div>
+            <h3 class="page-product-headin">Tweet about #AcmeOutdoors products</h3>
+            <div class="w-widget w-widget-twitter"><iframe title="Twitter Tweet Button" src="https://platform.twitter.com/widgets/tweet_button.html#url=http%3A%2F%2Fbiznus-template.io&amp;counturl=biznus-template.io&amp;text=You&#x27;ll%20love%20the%20product%20from%20Acme%20Outdoors!&amp;show_count=false&amp;dnt=true&amp;size=l&amp;width=81&amp;height=28" frameborder="0" scrolling="no" allowtransparency="true" style="border:none;width:81px;height:28px;overflow:hidden"></iframe></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="footer">
