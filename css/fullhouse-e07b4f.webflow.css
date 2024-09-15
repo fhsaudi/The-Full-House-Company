@@ -1293,6 +1293,22 @@ blockquote {
   transition: all .3s;
 }
 
+.tagline {
+    display: inline-block; /* Allows margin and padding */
+    opacity: 0; /* Start invisible */
+    transform: translateY(20px); /* Start slightly below */
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out; /* Animation on opacity and transform */
+    text-align: center; /* Center the tagline */
+    font-size: 18px; /* Adjust the size as needed */
+    color: #666; /* Change to a desirable color */
+}
+
+/* Class to trigger the visibility and animation */
+.show-tagline {
+    opacity: 1; /* Make it visible */
+    transform: translateY(0); /* Move to its original position */
+}
+
 .nav-link:hover {
   background-color: var(--black);
   background-image: none;
@@ -1303,11 +1319,82 @@ blockquote {
 }
 
 .nav-wrapper {
-  justify-content: space-between;
-  align-items: center;
-  display: flex;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
+/* Initially, hide the dropdown menu */
+.dropdown-menu {
+    display: none;
+    position: absolute; /* Keep it of the document flow */
+    background: white; /* Change if needed */
+    z-index: 1000; /* Make sure it's above other content */
+}
+
+/* Make the navbar responsive */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column; /* Stack elements */
+        width: 100%; /* Full width */
+    }
+
+    .menu-items {
+        display: none; /* Mobile menus hidden initially */
+        flex-direction: column; /* Stack links vertically */
+        width: 100%; /* Full width for dropdown */
+    }
+
+    .menu-toggle {
+        display: block; /* Show hamburger icon */
+        cursor: pointer; /* Hand cursor indicates clickable */
+    }
+
+    .active {
+        display: flex; /* Show menu on active */
+    }
+
+    .dropdown-menu {
+        display: block; /* Show dropdowns in mobile */
+    }
+}
+
+/* Style for active dropdown */
+.dropdown.active .dropdown-menu {
+    display: block; /* Show on active */
+}
+.dropdown:hover .dropdown-menu {
+    display: block; /* Display dropdown on hover */
+}
+
+.dropdown-item {
+    display: block; /* Make each item block-level */
+    padding: 10px 20px; /* Spacing around the items */
+    text-decoration: none; /* No underline on links */
+    color: black; /* Text color for items */
+    transition: background-color 0.3s; /* Smooth transition for hover effect */
+}
+
+.dropdown-item:hover {
+    background-color: #f0f0f0; /* Background color on hover */
+}
+
+/* Additional styles for menu alignment */
+.nav-menu {
+    display: flex; /* Make nav-items display in a row */
+    align-items: center; /* Align nav links vertically center */
+}
+
+.w-nav-link {
+    margin: 0 15px; /* Horizontal space between links */
+    padding: 10px; /* Padding for clickable area */
+    position: relative; /* Allows for absolute positioning within */
+}
+
+.w-nav-link:hover {
+    background-color: rgba(220, 220, 220, 0.6); /* Background on hover for main links */
+    border-radius: 4px; /* Slightly rounded edges */
+}
 .hero-wrapper {
   flex: 1;
 }
