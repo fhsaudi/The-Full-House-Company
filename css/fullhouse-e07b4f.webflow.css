@@ -10,6 +10,13 @@
   --medium-sea-green: #004aad;
 }
 
+.company-name {
+  font-size: 24px; /* Adjust size accordingly */
+  font-weight: bold; /* Optional: Make it bold */
+  margin-left: 10px; /* Space between logo and name */
+  vertical-align: middle; /* Aligns with the logo vertically */
+  color: #ffff; /* Change color as needed */
+}
 .w-layout-blockcontainer {
   max-width: 940px;
   margin-left: auto;
