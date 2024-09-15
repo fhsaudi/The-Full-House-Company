@@ -15,7 +15,7 @@
   font-weight: bold; /* Optional: Make it bold */
   margin-left: 10px; /* Space between logo and name */
   vertical-align: middle; /* Aligns with the logo vertically */
-  color: #ffff; /* Change color as needed */
+  color: var(--white-smoke); /* Change color as needed */
 }
 .w-layout-blockcontainer {
   max-width: 940px;
