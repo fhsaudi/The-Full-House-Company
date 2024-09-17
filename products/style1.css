@@ -1,0 +1,96 @@
+/* Navbar Styles */
+.navbar {
+    background-color: var(--primary-color); /* Use primary color */
+    padding: 10px 20px; /* Adjust padding for proper height */
+    display: flex;
+    align-items: center; /* Center items vertically */
+    justify-content: space-between; /* Space out brand and nav items */
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+    width: 100%;
+}
+
+.nav-wrapper {
+    display: flex;
+    align-items: center; /* Center items vertically */
+    width: 100%;
+}
+
+.brand {
+    display: flex;
+    align-items: center; /* Align logo and text vertically */
+    color: white; /* Brand text color */
+    text-decoration: none;
+}
+
+.brand img {
+    height: 50px; /* Adjust height to match navbar height */
+    width: auto;
+    margin-right: 15px; /* Space between logo and text */
+    vertical-align: middle; /* Align with text */
+}
+
+.brand span {
+    font-size: 22px;
+    font-weight: bold; /* Bold text for brand name */
+    line-height: 50px; /* Align with logo height */
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center; /* Center nav items vertically */
+    justify-content: flex-end; /* Align nav items to the right */
+}
+
+.nav-link {
+    color: white; /* Link color */
+    text-decoration: none;
+    margin: 0 15px; /* Adjust margin for spacing */
+    padding: 10px;
+    line-height: 50px; /* Match the height of the navbar */
+    display: flex;
+    align-items: center; /* Center text vertically */
+}
+
+.nav-link:hover {
+    background-color: var(--hover-color); /* Hover effect */
+    border-radius: 5px; /* Rounded corners on hover */
+}
+
+.dropdown {
+    position: relative;
+    display: flex;
+    align-items: center; /* Align dropdown with other nav items */
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: var(--primary-color);
+    min-width: 160px;
+    z-index: 1000;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    top: 100%; /* Position dropdown directly below the toggle */
+    left: 0;
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    color: white;
+    padding: 10px;
+    text-decoration: none;
+    display: block;
+    transition: background-color 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background-color: var(--hover-color); /* Darker hover color */
+}

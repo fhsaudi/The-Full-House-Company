@@ -1,0 +1,244 @@
+:root {
+    --primary-color: #172f50; /* Main brand color */
+    --secondary-color: #f4f4f4; /* Background color */
+    --text-color: #333; /* Default text color */
+    --hover-color: #1a4c7d; /* Hover state color */
+}
+
+body {
+    background-color: var(--secondary-color); /* Background color */
+    font-family: Arial, sans-serif;
+    color: var(--text-color); /* Default text color */
+    margin: 0;
+    padding: 0;
+}
+
+/* Navbar styles */
+.navbar {
+    background-color: var(--primary-color); /* Use primary color */
+    padding: 20px 0;
+    display: flex;
+    align-items: center; /* Align items vertically */
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between; /* Space out brand and nav */
+    align-items: center;
+    width: 100%;
+}
+
+.brand-container {
+    flex: 1; /* Take up available space */
+    text-align: left; /* Align text to the left */
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    color: white; /* Brand text color */
+    text-decoration: none;
+}
+
+.brand img {
+    height: 80px; /* Increase the header logo height */
+    margin-right: 15px; /* Space between logo and text */
+    width: auto;
+}
+
+.brand span {
+    font-size: 22px;
+    font-weight: bold; /* Bold text for brand name */
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Align nav items to the right */
+    flex: 2; /* Take up available space */
+}
+
+.nav-link {
+    color: white; /* Link color */
+    text-decoration: none;
+    margin: 0 15px;
+    padding: 10px;
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.nav-link:hover {
+    background-color: var(--hover-color); /* Hover effect */
+    border-radius: 5px; /* Rounded corners on hover */
+}
+
+/* Dropdown menu styling */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: var(--primary-color);
+    min-width: 160px;
+    z-index: 1000;
+    border-radius: 5px; /* Rounded corners for dropdown */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Drop shadow for better visibility */
+}
+
+.dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-item {
+    color: white;
+    padding: 10px;
+    text-decoration: none;
+    display: block;
+    transition: background-color 0.3s ease; /* Smooth hover effect */
+}
+
+.dropdown-item:hover {
+    background-color: var(--hover-color); /* Darker hover color */
+}
+
+/* Header styles */
+header {
+    background-color: var(--primary-color);
+    padding: 10px 0;
+}
+
+/* Product grid styling */
+.product-grid {
+    display: flex;
+    flex-wrap: wrap; /* Allow product cards to wrap */
+    justify-content: space-around; /* Space evenly between product cards */
+    gap: 20px; /* Gap between product cards */
+    margin-top: 20px;
+}
+
+.product-card {
+    background-color: white; /* Background color for cards */
+    border: 1px solid #ddd; /* Light gray border */
+    padding: 15px; /* Padding around content */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Add shadow to cards */
+    width: 250px; /* Set a fixed width */
+    text-align: center; /* Center text in product cards */
+    transition: transform 0.2s, box-shadow 0.2s; /* Smooth scaling effect and shadow */
+}
+
+.product-card:hover {
+    transform: scale(1.05); /* Scale effect on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Enhance shadow on hover */
+}
+
+.product-image {
+    width: 100%; /* Responsive image width */
+    height: auto; /* Maintain aspect ratio */
+}
+
+/* Remove Add to Cart button */
+.product-card button {
+    display: none; /* Completely hide the button */
+}
+
+/* Footer styles */
+footer {
+    background-color: var(--primary-color); /* Use primary color */
+    color: white;
+    padding: 20px 0;
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between; /* Space out left and right sections */
+    align-items: flex-start; /* Align items to the top */
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+}
+
+.footer-left {
+    flex: 1;
+    text-align: left; /* Align text to the left */
+    margin-bottom: 20px; /* Add bottom margin for spacing */
+}
+
+.footer-logo {
+    height: 80px; /* Increase the footer logo height */
+    margin-bottom: 10px; /* Add space below the logo */
+}
+
+.company-name {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.company-desc {
+    font-size: 16px;
+}
+
+.footer-right {
+    flex: 1;
+    text-align: left; /* Align text to the left */
+}
+
+.footer-right h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.footer-right p {
+    margin: 5px 0;
+}
+
+.social-icons {
+    margin-top: 10px;
+}
+
+.social-icons a {
+    margin: 0 10px;
+    display: inline-block;
+}
+
+.social-icons img {
+    height: 24px;
+    width: auto;
+}
+
+/* Footer Bottom styles */
+.footer-bottom {
+    text-align: center; /* Center text */
+    padding: 10px 0;
+    background-color: var(--primary-color); /* Match footer background */
+}
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column; /* Stack items vertically */
+        align-items: center; /* Center align items */
+    }
+
+    .footer-container {
+        flex-direction: column; /* Stack footer sections vertically */
+        align-items: center; /* Center align items */
+    }
+
+    .footer-left, .footer-right {
+        text-align: center;
+        margin-bottom: 20px; /* Add spacing between sections */
+    }
+
+    .social-icons {
+        margin-top: 20px; /* Add margin above social icons */
+    }
+}

@@ -1666,31 +1666,103 @@ blockquote {
   line-height: 1.2;
 }
 
-.footer {
-  background-color: var(--indian-red);
-  padding-top: 65px;
-  padding-bottom: 10px;
+/* General Footer Styles */
+footer {
+    background-color: #003366; /* Dark blue background */
+    color: #ffffff;
+    padding: 40px 0;
+    font-family: 'Arial', sans-serif; /* Use Arial for a clean look */
+    text-align: center;
 }
 
-.footer-wrapper {
-  justify-content: space-between;
-  align-items: center;
-  display: flex;
+/* Container for the Footer Content */
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    flex-wrap: wrap;
 }
 
-.social-footer-link {
-  margin-left: 20px;
-  transition: all .3s;
+/* Left Section (Logo and Company Info) */
+.footer-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-basis: 30%;
 }
 
-.social-footer-link:hover {
-  opacity: .7;
+.footer-logo {
+    width: 100px; /* Adjust logo size */
+    margin-bottom: 10px;
 }
 
-.footer-bottom-wrapper {
-  color: var(--white-smoke);
-  text-align: center;
-  margin-top: 55px;
+.company-name {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 5px 0;
+    color: #ffffff;
+}
+
+.company-desc {
+    font-size: 16px;
+    margin-bottom: 15px;
+    font-style: italic; /* Italicized company description */
+}
+
+/* Right Section (Address and Social Icons) */
+.footer-right {
+    flex-basis: 60%;
+    text-align: left;
+}
+
+.footer-right h3 {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.footer-right p {
+    font-size: 16px;
+    margin: 8px 0;
+}
+
+.footer-right a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.footer-right a:hover {
+    text-decoration: underline;
+}
+
+/* Social Media Icons */
+.social-icons {
+    margin-top: 10px;
+}
+
+.social-icons a {
+    margin-right: 15px;
+}
+
+.social-icons img {
+    width: 24px;
+    height: 24px;
+}
+
+/* Bottom Copyright Section */
+.footer-bottom {
+    background-color: #00264d; /* Slightly darker blue for the bottom bar */
+    padding: 10px 0;
+    font-size: 14px;
+    margin-top: 30px;
+}
+
+.footer-bottom p {
+    margin: 0;
+    color: #cccccc;
 }
 
 .nav-menu {
