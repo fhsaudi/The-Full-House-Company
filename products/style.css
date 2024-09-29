@@ -156,6 +156,17 @@ footer {
     padding: 20px 0;
 }
 
+/* Tagline Style */
+.footer-tagline {
+    font-size: 30px; /* Adjust font size as needed */
+    font-weight: bold;
+    text-transform: uppercase; /* Make text uppercase */
+    text-align: center; /* Center the tagline */
+    color: #ffffff; /* Ensure the tagline is visible against the background */
+    margin-bottom: 20px; /* Space below the tagline */
+}
+
+/* Footer Container */
 .footer-container {
     display: flex;
     justify-content: space-between; /* Space out left and right sections */
@@ -167,37 +178,48 @@ footer {
 }
 
 .footer-left {
-    flex: 1;
-    text-align: left; /* Align text to the left */
-    margin-bottom: 20px; /* Add bottom margin for spacing */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-basis: 30%;
 }
 
 .footer-logo {
-    height: 80px; /* Increase the footer logo height */
+    height: 150px; /* Increase the footer logo height */
     margin-bottom: 10px; /* Add space below the logo */
 }
 
 .company-name {
-    font-size: 24px;
+    font-size: 30px;
     font-weight: bold;
+    margin: 5px 0;
+    color: #ffffff;
 }
 
 .company-desc {
     font-size: 16px;
+    margin-bottom: 15px;
+    font-style: italic; /* Italicized company description */
 }
 
 .footer-right {
-    flex: 1;
-    text-align: left; /* Align text to the left */
+    font-size: 22px;
+    margin: 14px 0;
+    flex-basis: 60%;
+    text-align: left;
 }
 
 .footer-right h3 {
-    font-size: 18px;
+    font-size: 22px;
     margin-bottom: 10px;
 }
 
 .footer-right p {
-    margin: 5px 0;
+    margin: 10px 0; /* Adjust general margin for paragraphs */
+}
+
+.footer-right p:nth-of-type(1) {
+    margin-top: 20px; /* Increase margin for the first paragraph (address) */
 }
 
 .social-icons {
@@ -212,6 +234,11 @@ footer {
 .social-icons img {
     height: 24px;
     width: auto;
+}
+
+/* Apply Garamond font to footer text */
+footer {
+    font-family: 'Garamond', serif; /* Change footer font to Garamond */
 }
 
 /* Footer Bottom styles */
@@ -242,3 +269,4 @@ footer {
         margin-top: 20px; /* Add margin above social icons */
     }
 }
+

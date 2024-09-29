@@ -1,12 +1,13 @@
 /* Navbar Styles */
 .navbar {
     background-color: var(--primary-color); /* Use primary color */
-    padding: 10px 20px; /* Adjust padding for proper height */
+    padding: 20px 20px; /* Adjust padding for proper height */
     display: flex;
     align-items: center; /* Center items vertically */
     justify-content: space-between; /* Space out brand and nav items */
 }
 
+/* Container for max width */
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -50,7 +51,7 @@
     color: white; /* Link color */
     text-decoration: none;
     margin: 0 15px; /* Adjust margin for spacing */
-    padding: 10px;
+    padding: 10px 15px; /* Add padding for a better click area */
     line-height: 50px; /* Match the height of the navbar */
     display: flex;
     align-items: center; /* Center text vertically */
@@ -85,7 +86,7 @@
 
 .dropdown-item {
     color: white;
-    padding: 10px;
+    padding: 10px 15px; /* Adjust padding for dropdown items */
     text-decoration: none;
     display: block;
     transition: background-color 0.3s ease;
