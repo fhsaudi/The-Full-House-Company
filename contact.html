@@ -14,6 +14,9 @@
             transform: scale(1.05); /* Slightly increase the size on hover */
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); /* Increase shadow on hover */
         }
+        p {
+            text-align: justify;
+        }
     </style>
   <meta charset="utf-8">
   <title>Contact</title>
@@ -84,8 +87,10 @@
     <div class="footer-container">
         <div class="footer-left">
             <img src="images/logo.png" alt="Full House Logo" class="footer-logo">
-            <h2 class="company-name">The Full House</h2>
-            <p class="company-desc">A United SAAM's Company</p>
+            <div class="footer-text">
+                <h2 class="company-name">The Full House</h2> <!-- Single line for company name -->
+                <p class="company-desc">A United SAAM's Company</p> <!-- Description below company name -->
+            </div>
         </div>
         <div class="footer-right">
             <p>7238, Prince Nayef Street, AlMatar, Abqaiq, Eastern Province, Kingdom Of Saudi Arabia</p>
@@ -100,7 +105,7 @@
         </div>
     </div>
     <div class="footer-bottom">
-        <p>© 2024 The Full House, All Rights Reserved</p>
+        <p class="no-justify">© 2024 The Full House, All Rights Reserved</p>
     </div>
 </footer>
 </body>

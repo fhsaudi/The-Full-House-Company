@@ -1653,7 +1653,7 @@ blockquote {
 
 /* General Footer Styles */
 footer {
-    background-color: #003366; /* Dark blue background */
+    background-color: #003366;
     color: #ffffff;
     padding: 40px 0;
     font-family: 'Garamond', serif;
@@ -1674,43 +1674,41 @@ footer {
 /* Left Section (Logo and Company Info) */
 .footer-left {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    align-items: center; /* Vertically aligns logo and text */
     flex-basis: 30%;
+    white-space: nowrap; /* Ensures the text doesn't break into multiple lines */
 }
 
 .footer-logo {
-    width: 150px; /* Adjust logo size */
-    margin-bottom: 0px;
+    width: 150px;
+    margin-right: 15px; /* Adjust space between logo and text */
+}
+
+.footer-text {
+    text-align: left;
 }
 
 .company-name {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: bold;
-    margin: 5px 0;
-    color: #ffffff;
+    margin: 0;
+    margin-top: 30px;
+    line-height: 1; /* Ensure no extra line spacing */
+    white-space: nowrap; /* Prevents line break */
 }
 
 .company-desc {
-    font-size: 16px;
-    margin-bottom: 15px;
-    font-style: italic; /* Italicized company description */
+    font-size: 14px;
+    font-style: italic;
+    margin-top: 5px;
+    letter-spacing: 0.5px; /* Reduces space between words */
+    line-height: 1; /* Closer spacing between lines */
 }
 
 /* Right Section (Address and Social Icons) */
 .footer-right {
     flex-basis: 60%;
     text-align: left;
-}
-
-/* Tagline Style */
-.footer-tagline {
-    font-size: 30px; /* Adjust font size as needed */
-    font-weight: bold;
-    text-transform: uppercase; /* Make text uppercase */
-    text-align: center; /* Center the tagline */
-    color: #ffffff; /* Ensure the tagline is visible against the background */
-    margin-bottom: 20px; /* Space below the tagline */
 }
 
 .footer-right p {
@@ -1725,6 +1723,16 @@ footer {
 
 .footer-right a:hover {
     text-decoration: underline;
+}
+
+/* Tagline Style */
+.footer-tagline {
+    font-size: 30px;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    color: #ffffff;
+    margin-bottom: 20px;
 }
 
 /* Social Media Icons */
@@ -1743,10 +1751,14 @@ footer {
 
 /* Bottom Copyright Section */
 .footer-bottom {
-    background-color: #00264d; /* Slightly darker blue for the bottom bar */
+    background-color: #003366;
     padding: 10px 0;
     font-size: 14px;
     margin-top: 30px;
+}
+
+p.no-justify {
+    text-align: center;
 }
 
 .footer-bottom p {

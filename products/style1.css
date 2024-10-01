@@ -1,60 +1,88 @@
-/* Navbar Styles */
-.navbar {
-    background-color: var(--primary-color); /* Use primary color */
-    padding: 20px 20px; /* Adjust padding for proper height */
-    display: flex;
-    align-items: center; /* Center items vertically */
-    justify-content: space-between; /* Space out brand and nav items */
+:root {
+    --primary-color: #172f50; /* Main brand color */
+    --secondary-color: #f4f4f4; /* Background color */
+    --text-color: #333; /* Default text color */
+    --hover-color: #1a4c7d; /* Hover state color */
 }
 
-/* Container for max width */
+body {
+    background-color: var(--secondary-color); /* Background color */
+    font-family: Arial, sans-serif;
+    color: var(--text-color); /* Default text color */
+    margin: 0;
+    padding: 0;
+}
+
+/* Navbar styles */
+.navbar {
+    background-color: var(--primary-color); /* Use primary color */
+    padding: 20px 0;
+    display: flex;
+    align-items: center; /* Align items vertically */
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0;
+    padding: 0 20px;
     width: 100%;
 }
 
-.nav-wrapper {
+.header-content {
     display: flex;
-    align-items: center; /* Center items vertically */
+    justify-content: space-between; /* Space out brand and nav */
+    align-items: center;
     width: 100%;
+}
+
+.header-company-name {
+    font-size: 26px; /* Font size for the header company name */
+    margin-top: 10px; /* Adjust to align with the logo */
+    margin-bottom: 0; /* Remove bottom margin */
+    font-weight: bold; /* Make the header company name bold */
+}
+
+/* For the header logo if necessary */
+.header-logo {
+    margin-top: 10px; /* Ensure logo aligns well with the company name */
+}
+
+.brand-container {
+    flex: 1; /* Take up available space */
+    text-align: left; /* Align text to the left */
 }
 
 .brand {
     display: flex;
-    align-items: center; /* Align logo and text vertically */
+    align-items: center;
     color: white; /* Brand text color */
     text-decoration: none;
 }
 
 .brand img {
-    height: 50px; /* Adjust height to match navbar height */
-    width: auto;
+    height: 100px; /* Logo height */
     margin-right: 15px; /* Space between logo and text */
-    vertical-align: middle; /* Align with text */
+    width: auto;
 }
 
 .brand span {
     font-size: 22px;
     font-weight: bold; /* Bold text for brand name */
-    line-height: 50px; /* Align with logo height */
 }
 
 .nav-menu {
     display: flex;
-    align-items: center; /* Center nav items vertically */
+    align-items: center;
     justify-content: flex-end; /* Align nav items to the right */
+    flex: 2; /* Take up available space */
 }
 
 .nav-link {
     color: white; /* Link color */
     text-decoration: none;
-    margin: 0 15px; /* Adjust margin for spacing */
-    padding: 10px 15px; /* Add padding for a better click area */
-    line-height: 50px; /* Match the height of the navbar */
-    display: flex;
-    align-items: center; /* Center text vertically */
+    margin: 0 15px;
+    padding: 10px;
+    transition: background-color 0.3s ease; /* Smooth hover effect */
 }
 
 .nav-link:hover {
@@ -62,10 +90,9 @@
     border-radius: 5px; /* Rounded corners on hover */
 }
 
+/* Dropdown menu styling */
 .dropdown {
     position: relative;
-    display: flex;
-    align-items: center; /* Align dropdown with other nav items */
 }
 
 .dropdown-menu {
@@ -74,10 +101,8 @@
     background-color: var(--primary-color);
     min-width: 160px;
     z-index: 1000;
-    border-radius: 5px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    top: 100%; /* Position dropdown directly below the toggle */
-    left: 0;
+    border-radius: 5px; /* Rounded corners for dropdown */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Drop shadow for better visibility */
 }
 
 .dropdown:hover .dropdown-menu {
@@ -86,12 +111,183 @@
 
 .dropdown-item {
     color: white;
-    padding: 10px 15px; /* Adjust padding for dropdown items */
+    padding: 10px;
     text-decoration: none;
     display: block;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease; /* Smooth hover effect */
 }
 
 .dropdown-item:hover {
     background-color: var(--hover-color); /* Darker hover color */
+}
+
+/* Header styles */
+header {
+    background-color: var(--primary-color);
+    padding: 10px 0;
+}
+
+/* Product grid styling */
+.product-grid {
+    display: flex;
+    flex-wrap: wrap; /* Allow product cards to wrap */
+    justify-content: space-around; /* Space evenly between product cards */
+    gap: 20px; /* Gap between product cards */
+    margin-top: 20px;
+}
+
+.product-card {
+    background-color: white; /* Background color for cards */
+    border: 1px solid #ddd; /* Light gray border */
+    padding: 15px; /* Padding around content */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Add shadow to cards */
+    width: 250px; /* Set a fixed width */
+    text-align: center; /* Center text in product cards */
+    transition: transform 0.2s, box-shadow 0.2s; /* Smooth scaling effect and shadow */
+}
+
+.product-card:hover {
+    transform: scale(1.05); /* Scale effect on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Enhance shadow on hover */
+}
+
+.product-image {
+    width: 100%; /* Responsive image width */
+    height: auto; /* Maintain aspect ratio */
+}
+
+/* Remove Add to Cart button */
+.product-card button {
+    display: none; /* Completely hide the button */
+}
+
+/* Footer styles */
+footer {
+    background-color: var(--primary-color); /* Use primary color for footer background */
+    color: white; /* Text color in footer */
+    padding: 20px 0; /* Padding for spacing */
+    font-family: 'Garamond', serif; /* Font style */
+}
+
+/* Tagline Style */
+.footer-tagline {
+    font-size: 30px; /* Font size */
+    font-weight: bold; /* Bold text */
+    text-transform: uppercase; /* Uppercase letters */
+    text-align: center; /* Centered alignment */
+    color: #ffffff; /* White text */
+    margin-bottom: 20px; /* Space below the tagline */
+}
+
+/* Footer Container */
+.footer-container {
+    display: flex; /* Flexbox layout */
+    justify-content: space-between; /* Space out items */
+    align-items: flex-start; /* Align to the top */
+    max-width: 1200px; /* Max width */
+    margin: 0 auto; /* Center the container */
+    padding: 0 20px; /* Padding */
+    flex-wrap: wrap; /* Wrap items on smaller screens */
+}
+
+.footer-left {
+    display: flex; /* Use flexbox for alignment */
+    align-items: flex-start; /* Align items at the start (top) */
+}
+
+.footer-logo {
+    height: 200px; /* Set desired height for the logo */
+    margin-right: 20px; /* Space between logo and text */
+}
+
+.footer-text {
+    display: flex;
+    flex-direction: column; /* Stack text vertically */
+}
+
+.company-name {
+    font-size: 26px; /* Increase font size for company name */
+    margin-top: 80px; /* Keep this for alignment with the logo */
+    margin-bottom: 0; /* Remove bottom margin to bring it closer to the description */
+    font-weight: bold; /* Make company name bold */
+}
+
+.company-desc {
+    margin: 0; /* Remove all margins */
+    font-size: 16px; /* Set font size for description */
+    font-style: italic; /* Italicized description for emphasis */
+    padding-top: 5px; /* Add a small padding to control spacing */
+}
+
+/* Right Section of the Footer */
+.footer-right {
+    flex-basis: 60%; /* Set width */
+    text-align: left; /* Left align text */
+    font-size: 22px; /* Font size */
+    margin: 14px 0; /* General margin */
+}
+
+.footer-right p {
+    margin: 10px 0; /* General margin for paragraphs */
+}
+
+.footer-right a {
+    color: white; /* Link color */
+    text-decoration: none; /* Remove underline from links */
+}
+
+.footer-right a:hover {
+    color: #cccccc; /* Hover color */
+}
+
+.footer-right p:nth-of-type(1) {
+    margin-top: 20px; /* Increase margin for address */
+}
+
+/* Social Icons */
+.social-icons {
+    margin-top: 10px; /* Space above social icons */
+}
+
+.social-icons a {
+    margin: 0 10px; /* Space between icons */
+    display: inline-block; /* Align inline */
+}
+
+.social-icons img {
+    height: 24px; /* Icon size */
+    width: auto; /* Maintain aspect ratio */
+}
+
+/* Footer Bottom */
+.footer-bottom {
+    text-align: center; /* Center text */
+    padding: 10px 0; /* Padding */
+    background-color: #0a2b4a; /* Footer bottom background */
+}
+
+p.no-justify {
+    text-align: center; /* Centered alignment */
+}
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column; /* Stack items vertically */
+        align-items: center; /* Center align items */
+    }
+
+    .footer-container {
+        flex-direction: column; /* Stack footer sections vertically */
+        align-items: center; /* Center align items */
+    }
+
+    .footer-left, .footer-right {
+        text-align: center; /* Center text in footer sections */
+        margin-bottom: 20px; /* Add spacing between sections */
+    }
+
+    .social-icons {
+        margin-top: 20px; /* Add margin above social icons */
+    }
 }

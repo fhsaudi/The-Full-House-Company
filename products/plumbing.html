@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plumbing Products - The Full House Company</title>
     <link rel="stylesheet" href="style.css"> <!-- Main stylesheet -->
+    <link rel="stylesheet" href="root-buttons.css"> <!-- Buttons CSS file in the root directory -->
+    <style>
+        p {
+            text-align: justify;
+        }
+        /* Define styles for the header company name */
+        .header-company-name {
+            font-size: 26px; /* Adjust font size */
+            margin-top: 10px; /* Adjust the top margin for alignment */
+            margin-bottom: 0; /* Remove bottom margin */
+            font-weight: bold; /* Make it bold */
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -15,7 +28,7 @@
                     <div class="brand-container">
                         <a href="../index.html" class="brand w-nav-brand">
                             <img width="50" alt="Full House Company Logo" src="../images/logo.png" class="image-4">
-                            <span class="company-name">The Full House Company</span>
+                            <span class="header-company-name">The Full House Company</span> <!-- Updated class -->
                         </a>
                     </div>
                     <nav role="navigation" id="IN-PZGD" class="nav-menu w-nav-menu">
@@ -85,14 +98,14 @@
                     <h2>Bath Tubs</h2>
                     <p>Comfortable and practical tubs for various environments.</p>
                 </div>
-                
+
                 <!-- Product Card 7 -->
                 <div class="product-card">
                     <img src="../images/plumbing_product_7.jpg" alt="Wash Basins" class="product-image">
                     <h2>Wash Basins</h2>
                     <p>Versatile and practical basins that enhance both functionality and style in any environment.</p>
                 </div>
-                
+
                 <!-- Product Card 8 -->
                 <div class="product-card">
                     <img src="../images/plumbing_product_8.jpg" alt="Kitchen Faucets" class="product-image">
@@ -105,28 +118,30 @@
 
     <!-- Footer -->
     <footer>
-    <div class="footer-tagline">Your One-Stop-Shop For Quality Building Materials</div> <!-- Tagline added here -->
-    <div class="footer-container">
-        <div class="footer-left">
-            <img src="images/logo.png" alt="Full House Logo" class="footer-logo">
-            <h2 class="company-name">The Full House</h2>
-            <p class="company-desc">A United SAAM's Company</p>
-        </div>
-        <div class="footer-right">
-            <p>7238, Prince Nayef Street, AlMatar, Abqaiq, Eastern Province, Kingdom Of Saudi Arabia</p>
-            <p>+966 13 123 4567 | +966 58 335 8711</p>
-            <p><a href="mailto:sales@fhsaudi.com">sales@fhsaudi.com</a> | <a href="mailto:info@fhsaudi.com">info@fhsaudi.com</a></p>
-            <div class="social-icons">
-                <a href="#"><img src="images/facebook.png" alt="Facebook"></a>
-                <a href="#"><img src="images/twitter.png" alt="Twitter"></a>
-                <a href="#"><img src="images/instagram.png" alt="Instagram"></a>
-                <a href="#"><img src="images/linkedin.png" alt="LinkedIn"></a>
+        <div class="footer-tagline">Your One-Stop-Shop For Quality Building Materials</div>
+        <div class="footer-container">
+            <div class="footer-left">
+                <img src="../images/logo.png" alt="Full House Logo" class="footer-logo">
+                <div class="footer-text">
+                    <h2 class="company-name">The Full House</h2>
+                    <p class="company-desc">A United SAAM's Company</p>
+                </div>
+            </div>
+            <div class="footer-right">
+                <p>7238, Prince Nayef Street, AlMatar, Abqaiq, Eastern Province,<br>Kingdom Of Saudi Arabia</p>
+                <p>+966 13 123 4567 | +966 58 335 8711</p>
+                <p><a href="mailto:sales@fhsaudi.com">sales@fhsaudi.com</a> | <a href="mailto:info@fhsaudi.com">info@fhsaudi.com</a></p>
+                <div class="social-icons">
+                    <a href="#"><img src="../images/facebook.png" alt="Facebook"></a>
+                    <a href="#"><img src="../images/twitter.png" alt="Twitter"></a>
+                    <a href="#"><img src="../images/instagram.png" alt="Instagram"></a>
+                    <a href="#"><img src="../images/linkedin.png" alt="LinkedIn"></a>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="footer-bottom">
-        <p>© 2024 The Full House, All Rights Reserved</p>
-    </div>
-</footer>
+        <div class="footer-bottom">
+            <p class="no-justify">© 2024 The Full House, All Rights Reserved</p>
+        </div>
+    </footer>
 </body>
 </html>

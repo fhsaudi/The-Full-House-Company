@@ -4,30 +4,43 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Civil Products - The Full House Company</title>
-    <link rel="stylesheet" href="style.css"> <!-- Link to the main stylesheet -->
+    <link rel="stylesheet" href="style.css"> <!-- Main stylesheet -->
+    <link rel="stylesheet" href="root-buttons.css"> <!-- Buttons CSS file in the root directory -->
+    <style>
+        p {
+            text-align: justify;
+        }
+        /* Define styles for the header company name */
+        .header-company-name {
+            font-size: 26px; /* Adjust font size */
+            margin-top: 10px; /* Adjust the top margin for alignment */
+            margin-bottom: 0; /* Remove bottom margin */
+            font-weight: bold; /* Make it bold */
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation Bar -->
     <header>
-        <div class="navbar w-nav" role="banner">
+        <div class="navbar w-nav" data-easing2="ease-out" data-easing="ease-in" data-collapse="medium" role="banner" data-duration="9000" id="NAVBAR" data-doc-height="1">
             <div class="container">
                 <div class="header-content">
                     <div class="brand-container">
                         <a href="../index.html" class="brand w-nav-brand">
-                            <img width="80" alt="Full House Company Logo" src="../images/logo.png" class="image-4">
-                            <span class="company-name">The Full House Company</span>
+                            <img width="50" alt="Full House Company Logo" src="../images/logo.png" class="image-4">
+                            <span class="header-company-name">The Full House Company</span>
                         </a>
                     </div>
-                    <nav role="navigation" class="nav-menu w-nav-menu">
+                    <nav role="navigation" id="IN-PZGD" class="nav-menu w-nav-menu">
                         <a href="../index.html" class="nav-link w-nav-link">Home</a>
                         <a href="../about.html" class="nav-link w-nav-link">About Us</a>
                         <div class="dropdown">
-                    <a href="#" class="nav-link w-nav-link dropdown-toggle">Product Range</a>
-                    <div class="dropdown-menu">
-                        <a href="electrical.html" class="dropdown-item">Electrical</a>
-                        <a href="plumbing.html" class="dropdown-item">Plumbing</a>
-                        <a href="civil.html" class="dropdown-item">Civil</a>
-                        <a href="tools.html" class="dropdown-item">Tools</a>
+                            <a href="#" class="nav-link w-nav-link dropdown-toggle">Product Range</a>
+                            <div class="dropdown-menu">
+                                <a href="electrical.html" class="dropdown-item">Electrical</a>
+                                <a href="plumbing.html" class="dropdown-item">Plumbing</a>
+                                <a href="civil.html" class="dropdown-item">Civil</a>
+                                <a href="tools.html" class="dropdown-item">Tools</a>
                             </div>
                         </div>
                         <a href="../contact.html" class="nav-link w-nav-link">Contact Us</a>
@@ -78,16 +91,17 @@
                     <h2>Concrete Blocks</h2>
                     <p>Sturdy concrete blocks for building walls and other structures.</p>
                 </div>
-                <!-- Product Card 7 -->
+
+                <!-- Product Card 6 -->
                 <div class="product-card">
-                    <img src="../images/civil_product_7.jpg" alt="Masonry Tools" class="product-image">
+                    <img src="../images/civil_product_6.jpg" alt="Masonry Tools" class="product-image">
                     <h2>Masonry Tools</h2>
                     <p>Essential tools for precise masonry and construction work.</p>
                 </div>
 
-                <!-- Product Card 8 -->
+                <!-- Product Card 7 -->
                 <div class="product-card">
-                    <img src="../images/civil_product_8.jpg" alt="Steel Beams" class="product-image">
+                    <img src="../images/civil_product_7.jpg" alt="Steel Beams" class="product-image">
                     <h2>Steel Beams</h2>
                     <p>Strong and versatile steel beams for structural support.</p>
                 </div>
@@ -97,15 +111,17 @@
 
     <!-- Footer -->
     <footer>
-    <div class="footer-tagline">Your One-Stop-Shop For Quality Building Materials</div> <!-- Tagline added here -->
+    <div class="footer-tagline">Your One-Stop-Shop For Quality Building Materials</div>
     <div class="footer-container">
         <div class="footer-left">
             <img src="images/logo.png" alt="Full House Logo" class="footer-logo">
-            <h2 class="company-name">The Full House</h2>
-            <p class="company-desc">A United SAAM's Company</p>
+            <div class="footer-text">
+                <h2 class="company-name">The Full House</h2>
+                <p class="company-desc">A United SAAM's Company</p>
+            </div>
         </div>
         <div class="footer-right">
-            <p>7238, Prince Nayef Street, AlMatar, Abqaiq, Eastern Province, Kingdom Of Saudi Arabia</p>
+            <p>7238, Prince Nayef Street, AlMatar, Abqaiq, Eastern Province,<br>Kingdom Of Saudi Arabia</p>
             <p>+966 13 123 4567 | +966 58 335 8711</p>
             <p><a href="mailto:sales@fhsaudi.com">sales@fhsaudi.com</a> | <a href="mailto:info@fhsaudi.com">info@fhsaudi.com</a></p>
             <div class="social-icons">
@@ -117,7 +133,7 @@
         </div>
     </div>
     <div class="footer-bottom">
-        <p>© 2024 The Full House, All Rights Reserved</p>
+        <p class="no-justify">© 2024 The Full House, All Rights Reserved</p>
     </div>
 </footer>
 </body>

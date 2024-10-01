@@ -35,6 +35,18 @@ body {
     width: 100%;
 }
 
+.header-company-name {
+    font-size: 26px; /* Font size for the header company name */
+    margin-top: 10px; /* Adjust to align with the logo */
+    margin-bottom: 0; /* Remove bottom margin */
+    font-weight: bold; /* Make the header company name bold */
+}
+
+/* For the header logo if necessary */
+.header-logo {
+    margin-top: 10px; /* Ensure logo aligns well with the company name */
+}
+
 .brand-container {
     flex: 1; /* Take up available space */
     text-align: left; /* Align text to the left */
@@ -48,7 +60,7 @@ body {
 }
 
 .brand img {
-    height: 80px; /* Increase the header logo height */
+    height: 100px; /* Logo height */
     margin-right: 15px; /* Space between logo and text */
     width: auto;
 }
@@ -151,101 +163,111 @@ header {
 
 /* Footer styles */
 footer {
-    background-color: var(--primary-color); /* Use primary color */
-    color: white;
-    padding: 20px 0;
+    background-color: var(--primary-color); /* Use primary color for footer background */
+    color: white; /* Text color in footer */
+    padding: 20px 0; /* Padding for spacing */
+    font-family: 'Garamond', serif; /* Font style */
 }
 
 /* Tagline Style */
 .footer-tagline {
-    font-size: 30px; /* Adjust font size as needed */
-    font-weight: bold;
-    text-transform: uppercase; /* Make text uppercase */
-    text-align: center; /* Center the tagline */
-    color: #ffffff; /* Ensure the tagline is visible against the background */
+    font-size: 30px; /* Font size */
+    font-weight: bold; /* Bold text */
+    text-transform: uppercase; /* Uppercase letters */
+    text-align: center; /* Centered alignment */
+    color: #ffffff; /* White text */
     margin-bottom: 20px; /* Space below the tagline */
 }
 
 /* Footer Container */
 .footer-container {
-    display: flex;
-    justify-content: space-between; /* Space out left and right sections */
-    align-items: flex-start; /* Align items to the top */
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    display: flex; /* Flexbox layout */
+    justify-content: space-between; /* Space out items */
+    align-items: flex-start; /* Align to the top */
+    max-width: 1200px; /* Max width */
+    margin: 0 auto; /* Center the container */
+    padding: 0 20px; /* Padding */
+    flex-wrap: wrap; /* Wrap items on smaller screens */
 }
 
 .footer-left {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex-basis: 30%;
+    display: flex; /* Use flexbox for alignment */
+    align-items: flex-start; /* Align items at the start (top) */
 }
 
 .footer-logo {
-    height: 150px; /* Increase the footer logo height */
-    margin-bottom: 10px; /* Add space below the logo */
+    height: 200px; /* Set desired height for the logo */
+    margin-right: 20px; /* Space between logo and text */
+}
+
+.footer-text {
+    display: flex;
+    flex-direction: column; /* Stack text vertically */
 }
 
 .company-name {
-    font-size: 30px;
-    font-weight: bold;
-    margin: 5px 0;
-    color: #ffffff;
+    font-size: 26px; /* Increase font size for company name */
+    margin-top: 80px; /* Keep this for alignment with the logo */
+    margin-bottom: 0; /* Remove bottom margin to bring it closer to the description */
+    font-weight: bold; /* Make company name bold */
 }
 
 .company-desc {
-    font-size: 16px;
-    margin-bottom: 15px;
-    font-style: italic; /* Italicized company description */
+    margin: 0; /* Remove all margins */
+    font-size: 16px; /* Set font size for description */
+    font-style: italic; /* Italicized description for emphasis */
+    padding-top: 5px; /* Add a small padding to control spacing */
 }
 
+/* Right Section of the Footer */
 .footer-right {
-    font-size: 22px;
-    margin: 14px 0;
-    flex-basis: 60%;
-    text-align: left;
-}
-
-.footer-right h3 {
-    font-size: 22px;
-    margin-bottom: 10px;
+    flex-basis: 60%; /* Set width */
+    text-align: left; /* Left align text */
+    font-size: 22px; /* Font size */
+    margin: 14px 0; /* General margin */
 }
 
 .footer-right p {
-    margin: 10px 0; /* Adjust general margin for paragraphs */
+    margin: 10px 0; /* General margin for paragraphs */
+}
+
+.footer-right a {
+    color: white; /* Link color */
+    text-decoration: none; /* Remove underline from links */
+}
+
+.footer-right a:hover {
+    color: #cccccc; /* Hover color */
 }
 
 .footer-right p:nth-of-type(1) {
-    margin-top: 20px; /* Increase margin for the first paragraph (address) */
+    margin-top: 20px; /* Increase margin for address */
 }
 
+/* Social Icons */
 .social-icons {
-    margin-top: 10px;
+    margin-top: 10px; /* Space above social icons */
 }
 
 .social-icons a {
-    margin: 0 10px;
-    display: inline-block;
+    margin: 0 10px; /* Space between icons */
+    display: inline-block; /* Align inline */
 }
 
 .social-icons img {
-    height: 24px;
-    width: auto;
+    height: 24px; /* Icon size */
+    width: auto; /* Maintain aspect ratio */
 }
 
-/* Apply Garamond font to footer text */
-footer {
-    font-family: 'Garamond', serif; /* Change footer font to Garamond */
-}
-
-/* Footer Bottom styles */
+/* Footer Bottom */
 .footer-bottom {
     text-align: center; /* Center text */
-    padding: 10px 0;
-    background-color: var(--primary-color); /* Match footer background */
+    padding: 10px 0; /* Padding */
+    background-color:var(--primary-color); /* Footer bottom background */
+}
+
+p.no-justify {
+    text-align: center; /* Centered alignment */
 }
 
 /* Media query for smaller screens */
@@ -261,7 +283,7 @@ footer {
     }
 
     .footer-left, .footer-right {
-        text-align: center;
+        text-align: center; /* Center text in footer sections */
         margin-bottom: 20px; /* Add spacing between sections */
     }
 
@@ -269,4 +291,3 @@ footer {
         margin-top: 20px; /* Add margin above social icons */
     }
 }
-
